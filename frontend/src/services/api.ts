@@ -160,8 +160,11 @@ export const adminAPI = {
     const response = await api.get(`/admin/orders/${id}`);
     return response.data;
   },
-  updateOrderStatus: async (id: string, status: string) => {
-    const response = await api.patch(`/admin/orders/${id}/status`, { status });
+  updateOrderStatus: async (id: string, status: string, additionalTime?: number) => {
+    const response = await api.patch(`/admin/orders/${id}/status`, { 
+      status,
+      ...(additionalTime !== undefined && { additionalTime })
+    });
     return response.data;
   },
   cancelOrder: async (id: string, reason?: string) => {
