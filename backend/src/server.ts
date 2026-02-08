@@ -15,6 +15,8 @@ import orderRoutes from './routes/order.routes';
 import adminRoutes from './routes/admin.routes';
 import userRoutes from './routes/user.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import reviewRoutes from './routes/review.routes';
+import loyaltyRoutes from './routes/loyalty.routes';
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware';
@@ -95,6 +97,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/loyalty', loyaltyRoutes);
 
 // Error handling
 app.use(notFound);
@@ -111,10 +115,3 @@ app.listen(PORT, () => {
 });
 
 export default app;
-
-// Additional routes for new features
-import reviewRoutes from './routes/review.routes';
-import loyaltyRoutes from './routes/loyalty.routes';
-
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/loyalty', loyaltyRoutes);

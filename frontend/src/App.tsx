@@ -14,6 +14,7 @@ import AdminCategories from './pages/admin/AdminCategories';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCustomers from './pages/admin/AdminCustomers';
+import AdminReviews from './pages/admin/AdminReviews';
 import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
@@ -84,6 +85,13 @@ function App() {
                         <Link to="/admin/kitchen" className="block px-4 py-2 hover:bg-gray-100">
                           🍳 Kitchen Display
                         </Link>
+                        <Link to="/delivery" className="block px-4 py-2 hover:bg-gray-100">
+                          🚗 Delivery
+                        </Link>
+                        <Link to="/admin/reviews" className="block px-4 py-2 hover:bg-gray-100">
+                          ⭐ Reviews
+                        </Link>
+                        <div className="border-t border-gray-200"></div>
                         <Link to="/admin/categories" className="block px-4 py-2 hover:bg-gray-100">
                           Κατηγορίες
                         </Link>
@@ -175,6 +183,7 @@ function App() {
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/customers" element={<AdminCustomers />} />
+            <Route path="/admin/reviews" element={<AdminReviews />} />
             <Route path="/admin/kitchen" element={<KitchenDisplayPage />} />
             
             {/* Delivery Route */}
