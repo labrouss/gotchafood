@@ -115,14 +115,6 @@ export default function MyReviews() {
                           day: 'numeric',
                         })}
                       </span>
-                      {review.order && (
-                        <>
-                          <span>•</span>
-                          <span className="font-mono text-xs">
-                            #{review.order.orderNumber}
-                          </span>
-                        </>
-                      )}
                     </div>
                   </div>
                   
@@ -130,6 +122,20 @@ export default function MyReviews() {
                     {getStatusBadge(review.status)}
                   </div>
                 </div>
+
+                {/* Order Info */}
+                {review.order && (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 rounded-lg p-4 mb-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-blue-900">📦 Παραγγελία:</span>
+                      <span className="font-mono text-blue-800">#{review.order.orderNumber}</span>
+                      <span className="text-blue-600">•</span>
+                      <span className="text-blue-700">
+                        {new Date(review.order.createdAt).toLocaleDateString('el-GR')}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="bg-gray-50 rounded-xl p-4 mb-4">
                   <p className="text-gray-800 leading-relaxed">{review.comment}</p>

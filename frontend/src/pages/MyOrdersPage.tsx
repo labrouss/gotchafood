@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { orderAPI } from '../services/api';
+import { orderAPI, reviewAPI } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,12 +31,34 @@ export default function MyOrdersPage() {
     enabled: !!user,
   });
 
+  // Fetch reviews to check which orders have been reviewed
+  const { data: reviewsData } = useQuery({
+    queryKey: ['my-reviews'],
+    queryFn: reviewAPI.getMyReviews,
+    enabled: !!user,
+  });
+
   if (!user) {
     navigate('/login');
     return null;
   }
 
   const orders = data?.data?.orders || [];
+  
+  // Create a set of reviewed order IDs
+  const reviewedOrderIds = new Set(
+    (reviewsData?.data?.reviews || [])
+      .filter((review: any) => review.orderId)
+      .map((review: any) => review.orderId)
+  );
+
+  const canReviewOrder = (order: any) => {
+    return order.status === 'DELIVERED' && !reviewedOrderIds.has(order.id);
+  };
+
+  const hasReviewed = (order: any) => {
+    return reviewedOrderIds.has(order.id);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -142,6 +164,36 @@ export default function MyOrdersPage() {
                   <div className="mt-4 pt-4 border-t">
                     <p className="text-sm font-semibold mb-1">Σημειώσεις</p>
                     <p className="text-sm text-gray-600">{order.notes}</p>
+                  </div>
+                )}
+
+                {/* Review Button */}
+                {canReviewOrder(order) && (
+                  <div className="mt-4 pt-4 border-t">
+                    <button
+                      onClick={() => navigate(`/review?orderId=${order.id}`)}
+                      className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-6 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
+                    >
+                      <span>⭐</span>
+                      <span>Αξιολογήστε αυτή την παραγγελία</span>
+                    </button>
+                  </div>
+                )}
+
+                {hasReviewed(order) && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <span className="text-xl">✅</span>
+                        <span className="font-semibold">Αξιολογήθηκε</span>
+                      </div>
+                      <button
+                        onClick={() => navigate('/my-reviews')}
+                        className="text-green-700 hover:text-green-800 font-semibold text-sm"
+                      >
+                        Δείτε την αξιολόγηση →
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

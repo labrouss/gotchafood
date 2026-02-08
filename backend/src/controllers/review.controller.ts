@@ -6,7 +6,7 @@ import { AppError } from '../middleware/error.middleware';
 const prisma = new PrismaClient();
 
 const reviewSchema = z.object({
-  orderId: z.string().optional(),
+  orderId: z.string().min(1, 'Order ID is required'),
   rating: z.number().min(1).max(5),
   comment: z.string().min(1),
   type: z.enum(['product', 'service', 'suggestion']),
@@ -16,6 +16,34 @@ export const createReview = async (req: Request, res: Response, next: NextFuncti
   try {
     const data = reviewSchema.parse(req.body);
     const userId = req.user.id;
+
+    // Verify the order exists and belongs to the user
+    const order = await prisma.order.findFirst({
+      where: {
+        id: data.orderId,
+        userId: userId,
+        status: 'DELIVERED', // Only allow reviews for delivered orders
+      },
+    });
+
+    if (!order) {
+      throw new AppError(
+        'Order not found or not eligible for review. Only delivered orders can be reviewed.',
+        400
+      );
+    }
+
+    // Check if this order has already been reviewed by this user
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        orderId: data.orderId,
+        userId: userId,
+      },
+    });
+
+    if (existingReview) {
+      throw new AppError('You have already reviewed this order', 400);
+    }
 
     const review = await prisma.review.create({
       data: {
