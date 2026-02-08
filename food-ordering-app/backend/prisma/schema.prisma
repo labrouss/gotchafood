@@ -1,0 +1,249 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  email              String    @unique
+  password           String
+  firstName          String    @map("first_name")
+  lastName           String    @map("last_name")
+  phone              String?
+  role               UserRole  @default(CUSTOMER)
+  isActive           Boolean   @default(true) @map("is_active")
+  lastLoginAt        DateTime? @map("last_login_at")
+  lastLoginIp        String?   @map("last_login_ip")
+  emailVerified      Boolean   @default(false) @map("email_verified")
+  emailVerifyToken   String?   @map("email_verify_token")
+  emailVerifyExpiry  DateTime? @map("email_verify_expiry")
+  phoneVerified      Boolean   @default(false) @map("phone_verified")
+  phoneVerifyCode    String?   @map("phone_verify_code")
+  phoneVerifyExpiry  DateTime? @map("phone_verify_expiry")
+  routingRole        String?   @map("routing_role")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  addresses          Address[]
+  orders             Order[]
+  reviews            Review[]
+  loyaltyReward      LoyaltyReward?
+  rewardTransactions RewardTransaction[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  STAFF
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  label      String?
+  street     String
+  number     String
+  city       String
+  postalCode String   @map("postal_code")
+  floor      String?
+  notes      String?  @db.Text
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@map("addresses")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  nameEn      String?    @map("name_en")
+  slug        String     @unique
+  description String?    @db.Text
+  imageUrl    String?    @map("image_url")
+  sortOrder   Int        @default(0) @map("sort_order")
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  menuItems   MenuItem[]
+
+  @@map("categories")
+}
+
+model MenuItem {
+  id          String      @id @default(uuid())
+  categoryId  String      @map("category_id")
+  name        String
+  nameEn      String?     @map("name_en")
+  description String?     @db.Text
+  price       Decimal     @db.Decimal(10, 2)
+  imageUrl    String?     @map("image_url")
+  isAvailable Boolean     @default(true) @map("is_available")
+  isPopular   Boolean     @default(false) @map("is_popular")
+  sortOrder   Int         @default(0) @map("sort_order")
+  prepTime    Int         @default(10) @map("prep_time")
+  station     String      @default("kitchen")
+  calories    Int?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  @@map("menu_items")
+}
+
+model Order {
+  id                 String      @id @default(uuid())
+  userId             String      @map("user_id")
+  addressId          String      @map("address_id")
+  orderNumber        String      @unique @map("order_number")
+  status             OrderStatus @default(PENDING)
+  subtotal           Decimal     @db.Decimal(10, 2)
+  deliveryFee        Decimal     @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  totalAmount        Decimal     @map("total_amount") @db.Decimal(10, 2)
+  notes              String?     @db.Text
+  deliveryTime       DateTime?   @map("delivery_time")
+  completedAt        DateTime?   @map("completed_at")
+  cancelledAt        DateTime?   @map("cancelled_at")
+  cancellationReason String?     @map("cancellation_reason") @db.Text
+  placedAt           DateTime    @default(now()) @map("placed_at")
+  confirmedAt        DateTime?   @map("confirmed_at")
+  confirmedBy        String?     @map("confirmed_by")
+  preparingAt        DateTime?   @map("preparing_at")
+  preparingBy        String?     @map("preparing_by")
+  readyAt            DateTime?   @map("ready_at")
+  readyBy            String?     @map("ready_by")
+  outForDeliveryAt   DateTime?   @map("out_for_delivery_at")
+  outForDeliveryBy   String?     @map("out_for_delivery_by")
+  deliveredAt        DateTime?   @map("delivered_at")
+  deliveredBy        String?     @map("delivered_by")
+  estimatedTime      Int         @default(15) @map("estimated_time")
+  additionalTime     Int         @default(0) @map("additional_time")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+
+  user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  address            Address               @relation(fields: [addressId], references: [id])
+  items              OrderItem[]
+  payment            Payment?
+  reviews            Review[]
+  rewardTransactions RewardTransaction[]
+
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id          String    @id @default(uuid())
+  orderId     String    @map("order_id")
+  menuItemId  String    @map("menu_item_id")
+  quantity    Int
+  price       Decimal   @db.Decimal(10, 2)
+  subtotal    Decimal   @db.Decimal(10, 2)
+  notes       String?   @db.Text
+  station     String?
+  prepTime    Int       @default(10) @map("prep_time")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  assignedTo  String?   @map("assigned_to")
+  completedBy String?   @map("completed_by")
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String        @unique @map("order_id")
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?       @map("transaction_id")
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Review {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  orderId       String?  @map("order_id")
+  rating        Int
+  comment       String   @db.Text
+  type          String
+  status        String   @default("pending")
+  adminResponse String?  @db.Text @map("admin_response")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("reviews")
+}
+
+model LoyaltyReward {
+  id             String   @id @default(uuid())
+  userId         String   @unique @map("user_id")
+  points         Int      @default(0)
+  tier           String   @default("bronze")
+  lifetimePoints Int      @default(0) @map("lifetime_points")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("loyalty_rewards")
+}
+
+model RewardTransaction {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  orderId   String?  @map("order_id")
+  points    Int
+  type      String
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@map("reward_transactions")
+}

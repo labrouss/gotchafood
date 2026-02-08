@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  database:
+    image: mysql:8.0
+    container_name: food-ordering-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: food_ordering
+      MYSQL_USER: foodapp
+      MYSQL_PASSWORD: foodapp123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - food-ordering-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Backend API
+  backend:
+    image: node:20-slim
+    container_name: food-ordering-backend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://foodapp:foodapp123@database:3306/food_ordering
+      JWT_SECRET: dev-secret-change-in-production
+      JWT_EXPIRES_IN: 7d
+      PORT: 3000
+    volumes:
+      - ./backend:/app
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - food-ordering-network
+    command: sh -c "apt-get update && apt-get install -y openssl && npm install && npx prisma generate && npm run dev"
+
+  # Frontend Application
+  frontend:
+    image: node:20-slim
+    container_name: food-ordering-frontend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3000/api
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    networks:
+      - food-ordering-network
+    command: sh -c "npm install && npm run dev -- --host"
+
+  # phpMyAdmin (optional - for database management)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: food-ordering-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: foodapp
+      PMA_PASSWORD: foodapp123
+    depends_on:
+      - database
+    networks:
+      - food-ordering-network
+
+networks:
+  food-ordering-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
