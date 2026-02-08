@@ -17,6 +17,9 @@ import AdminCustomers from './pages/admin/AdminCustomers';
 import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
+import CreateReview from './pages/reviews/CreateReview';
+import MyReviews from './pages/reviews/MyReviews';
+import LoyaltyPage from './pages/loyalty/LoyaltyPage';
 import ToastContainer from './components/ToastContainer';
 import { useAuthStore } from './store/authStore';
 import { useCartStore } from './store/cartStore';
@@ -99,12 +102,32 @@ function App() {
                   
                   {user ? (
                     <>
-                      <Link 
-                        to="/profile" 
-                        className="text-sm hover:text-yellow-300 transition"
-                      >
-                        Γεια σου, {user.firstName}!
-                      </Link>
+                      <div className="relative group">
+                        <button className="text-sm hover:text-yellow-300 transition">
+                          Γεια σου, {user.firstName}! ▼
+                        </button>
+                        <div className="absolute right-0 mt-2 w-56 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                          <Link to="/profile" className="block px-4 py-3 hover:bg-gray-100 rounded-t-lg">
+                            👤 Το Προφίλ μου
+                          </Link>
+                          <Link to="/my-orders" className="block px-4 py-3 hover:bg-gray-100">
+                            📦 Οι Παραγγελίες μου
+                          </Link>
+                          <Link to="/my-addresses" className="block px-4 py-3 hover:bg-gray-100">
+                            📍 Οι Διευθύνσεις μου
+                          </Link>
+                          <div className="border-t border-gray-200"></div>
+                          <Link to="/loyalty" className="block px-4 py-3 hover:bg-gray-100">
+                            🎁 Loyalty Rewards
+                          </Link>
+                          <Link to="/my-reviews" className="block px-4 py-3 hover:bg-gray-100">
+                            ⭐ Οι Αξιολογήσεις μου
+                          </Link>
+                          <Link to="/review" className="block px-4 py-3 hover:bg-gray-100 rounded-b-lg">
+                            ✍️ Γράψτε Αξιολόγηση
+                          </Link>
+                        </div>
+                      </div>
                       <button
                         onClick={logout}
                         className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition"
@@ -156,6 +179,13 @@ function App() {
             
             {/* Delivery Route */}
             <Route path="/delivery" element={<DeliveryDashboard />} />
+            
+            {/* Review Routes */}
+            <Route path="/review" element={<CreateReview />} />
+            <Route path="/my-reviews" element={<MyReviews />} />
+            
+            {/* Loyalty Route */}
+            <Route path="/loyalty" element={<LoyaltyPage />} />
           </Routes>
 
           {/* Footer */}
