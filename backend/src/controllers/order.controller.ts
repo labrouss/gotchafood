@@ -77,6 +77,7 @@ export const createOrder = async (
         price: menuItem.price,
         subtotal: itemSubtotal,
         notes: item.notes,
+        station: menuItem.station, // Copy station from menu item
       };
     });
 

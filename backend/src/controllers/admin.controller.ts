@@ -221,10 +221,13 @@ export const createMenuItem = async (
       nameEn: z.string().optional(),
       description: z.string().optional(),
       price: z.number().positive(),
-      imageUrl: z.string().url().optional(),
+      imageUrl: z.string().url().optional().or(z.literal('')),
       isAvailable: z.boolean().default(true),
       isPopular: z.boolean().default(false),
       sortOrder: z.number().default(0),
+      prepTime: z.number().min(1).max(120).default(10),
+      calories: z.number().min(0).max(5000).default(0),
+      station: z.enum(['kitchen', 'barista', 'cold-prep', 'hot-prep']).optional().or(z.literal('')),
     });
 
     const data = schema.parse(req.body);
@@ -260,10 +263,13 @@ export const updateMenuItem = async (
       nameEn: z.string().optional(),
       description: z.string().optional(),
       price: z.number().positive().optional(),
-      imageUrl: z.string().url().optional(),
+      imageUrl: z.string().url().optional().or(z.literal('')),
       isAvailable: z.boolean().optional(),
       isPopular: z.boolean().optional(),
       sortOrder: z.number().optional(),
+      prepTime: z.number().min(1).max(120).optional(),
+      calories: z.number().min(0).max(5000).optional(),
+      station: z.enum(['kitchen', 'barista', 'cold-prep', 'hot-prep']).optional().or(z.literal('')),
     });
 
     const data = schema.parse(req.body);

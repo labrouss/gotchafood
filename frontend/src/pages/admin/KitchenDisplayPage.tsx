@@ -24,7 +24,9 @@ export default function KitchenDisplayPage() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   
-  const [selectedStation, setSelectedStation] = useState('all');
+  // Auto-select station based on user's routing role, default to 'all' for admins
+  const initialStation = user?.role === 'STAFF' && user?.routingRole ? user.routingRole : 'all';
+  const [selectedStation, setSelectedStation] = useState(initialStation);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000); // 5 seconds default
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -34,6 +36,9 @@ export default function KitchenDisplayPage() {
   
   const previousOrderCountRef = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Lock staff to their assigned station
+  const isStaffLocked = user?.role === 'STAFF' && user?.routingRole;
 
   // Initialize audio
   useEffect(() => {
@@ -290,15 +295,23 @@ export default function KitchenDisplayPage() {
 
           {/* Station Filter */}
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {stations.map((station) => (
+            {isStaffLocked && (
+              <div className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                🔒 Assigned to: {stations.find(s => s.id === user?.routingRole)?.name}
+              </div>
+            )}
+            {stations
+              .filter(station => !isStaffLocked || station.id === selectedStation)
+              .map((station) => (
               <button
                 key={station.id}
-                onClick={() => setSelectedStation(station.id)}
+                onClick={() => !isStaffLocked && setSelectedStation(station.id)}
+                disabled={isStaffLocked && station.id !== selectedStation}
                 className={`px-4 py-2 rounded-lg font-bold whitespace-nowrap transition flex items-center gap-2 ${
                   selectedStation === station.id
                     ? `${station.color} text-white`
                     : 'bg-white bg-opacity-20 hover:bg-opacity-30'
-                }`}
+                } ${isStaffLocked && station.id !== selectedStation ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span className="text-xl">{station.icon}</span>
                 <span>{station.name}</span>
