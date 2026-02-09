@@ -34,6 +34,10 @@ model User {
   reviews            Review[]
   loyaltyReward      LoyaltyReward?
   rewardTransactions RewardTransaction[]
+  
+  // Staff tracking relations
+  ordersConfirmed    Order[] @relation("ConfirmedBy")
+  ordersDelivered    Order[] @relation("DeliveredBy")
 
   @@map("users")
 }
@@ -138,6 +142,10 @@ model Order {
   payment            Payment?
   reviews            Review[]
   rewardTransactions RewardTransaction[]
+  
+  // Staff tracking relations
+  confirmedByUser    User?                 @relation("ConfirmedBy", fields: [confirmedBy], references: [id])
+  deliveredByUser    User?                 @relation("DeliveredBy", fields: [deliveredBy], references: [id])
 
   @@map("orders")
 }

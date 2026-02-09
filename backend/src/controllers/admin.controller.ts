@@ -457,6 +457,22 @@ export const getAllOrders = async (
             phone: true,
           },
         },
+        confirmedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+        deliveredByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
         address: true,
         items: {
           include: {
@@ -495,6 +511,22 @@ export const getOrderDetails = async (
             lastName: true,
             email: true,
             phone: true,
+          },
+        },
+        confirmedByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+        deliveredByUser: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
           },
         },
         address: true,
