@@ -189,6 +189,10 @@ export const adminAPI = {
     const response = await api.patch(`/admin/customers/${id}/role`, { role });
     return response.data;
   },
+  updateUserRoutingRole: async (id: string, routingRole: string | null) => {
+    const response = await api.patch(`/admin/customers/${id}/routing-role`, { routingRole });
+    return response.data;
+  },
 };
 
 // Analytics API

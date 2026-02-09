@@ -315,7 +315,7 @@ export const getAllCustomers = async (
 ) => {
   try {
     const customers = await prisma.user.findMany({
-      where: { role: 'CUSTOMER' },
+      // Remove the role filter to get ALL users
       select: {
         id: true,
         email: true,
@@ -323,6 +323,7 @@ export const getAllCustomers = async (
         lastName: true,
         phone: true,
         role: true,
+        routingRole: true, // Add routingRole
         isActive: true,
         lastLoginAt: true,
         lastLoginIp: true,
@@ -782,6 +783,51 @@ export const updateUserRole = async (
     res.json({
       success: true,
       message: `User role updated to ${role}`,
+      data: { user: updatedUser },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateUserRoutingRole = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+
+    const schema = z.object({
+      routingRole: z.enum(['delivery', 'counter', 'kitchen', 'hot-prep', 'cold-prep', 'barista']).nullable(),
+    });
+
+    const { routingRole } = schema.parse(req.body);
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { routingRole },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        routingRole: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: `Station assignment updated`,
       data: { user: updatedUser },
     });
   } catch (error) {

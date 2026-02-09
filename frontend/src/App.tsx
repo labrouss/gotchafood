@@ -15,6 +15,7 @@ import AdminProducts from './pages/admin/AdminProducts';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminReviews from './pages/admin/AdminReviews';
+import StaffManagement from './pages/admin/StaffManagement';
 import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
@@ -101,8 +102,11 @@ function App() {
                         <Link to="/admin/orders" className="block px-4 py-2 hover:bg-gray-100">
                           Παραγγελίες
                         </Link>
-                        <Link to="/admin/customers" className="block px-4 py-2 hover:bg-gray-100 rounded-b-lg">
+                        <Link to="/admin/customers" className="block px-4 py-2 hover:bg-gray-100">
                           Πελάτες
+                        </Link>
+                        <Link to="/admin/staff" className="block px-4 py-2 hover:bg-gray-100 rounded-b-lg">
+                          👥 Staff
                         </Link>
                       </div>
                     </div>
@@ -183,6 +187,7 @@ function App() {
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/customers" element={<AdminCustomers />} />
+            <Route path="/admin/staff" element={<StaffManagement />} />
             <Route path="/admin/reviews" element={<AdminReviews />} />
             <Route path="/admin/kitchen" element={<KitchenDisplayPage />} />
             

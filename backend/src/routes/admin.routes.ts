@@ -18,6 +18,7 @@ import {
   getCustomerDetails,
   toggleCustomerStatus,
   updateUserRole,
+  updateUserRoutingRole,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -52,5 +53,6 @@ router.get('/customers', getAllCustomers);
 router.get('/customers/:id', getCustomerDetails);
 router.patch('/customers/:id/toggle-status', toggleCustomerStatus);
 router.patch('/customers/:id/role', updateUserRole);
+router.patch('/customers/:id/routing-role', updateUserRoutingRole);
 
 export default router;
