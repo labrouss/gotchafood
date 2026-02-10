@@ -18,6 +18,7 @@ import AdminReviews from './pages/admin/AdminReviews';
 import StaffManagement from './pages/admin/StaffManagement';
 import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
+import InsightsPage from './pages/admin/InsightsPage';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 import CreateReview from './pages/reviews/CreateReview';
 import MyReviews from './pages/reviews/MyReviews';
@@ -82,6 +83,9 @@ function App() {
                         </Link>
                         <Link to="/admin/analytics" className="block px-4 py-2 hover:bg-gray-100">
                           📊 Analytics
+                        </Link>
+                        <Link to="/admin/insights" className="block px-4 py-2 hover:bg-gray-100">
+                          📈 Insights
                         </Link>
                         <Link to="/admin/kitchen" className="block px-4 py-2 hover:bg-gray-100">
                           🍳 Kitchen Display
@@ -183,6 +187,7 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/analytics" element={<EnhancedDashboard />} />
+            <Route path="/admin/insights"  element={<InsightsPage />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/orders" element={<AdminOrders />} />

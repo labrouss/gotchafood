@@ -204,6 +204,10 @@ export const adminAPI = {
     const response = await api.get(`/admin/staff-performance?${params.toString()}`);
     return response.data;
   },
+  getInsights: async (days: number = 7) => {
+    const response = await api.get(`/analytics?days=${days}`);
+    return response.data;
+  },
 };
 
 // Analytics API

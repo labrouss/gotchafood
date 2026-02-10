@@ -1,150 +1,193 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AppError } from '../middleware/error.middleware';
 
 const prisma = new PrismaClient();
 
-export const getAnalytics = async (
+const diffMin = (a: Date | null, b: Date | null): number | null => {
+  if (!a || !b) return null;
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000);
+};
+
+export const getInsights = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { period = 'week' } = req.query; // day, week, month, year
+    const { days = '7' } = req.query;
+    const daysNum = parseInt(days as string, 10);
 
-    const now = new Date();
-    let startDate: Date;
+    const since = new Date();
+    since.setDate(since.getDate() - daysNum);
+    since.setHours(0, 0, 0, 0);
 
-    switch (period) {
-      case 'day':
-        startDate = new Date(now);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case 'week':
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 7);
-        break;
-      case 'month':
-        startDate = new Date(now);
-        startDate.setMonth(now.getMonth() - 1);
-        break;
-      case 'year':
-        startDate = new Date(now);
-        startDate.setFullYear(now.getFullYear() - 1);
-        break;
-      default:
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - 7);
+    const orders = await prisma.order.findMany({
+      where: { placedAt: { gte: since } },
+      include: {
+        confirmedByUser:  { select: { id: true, firstName: true, lastName: true } },
+        deliveredByUser:  { select: { id: true, firstName: true, lastName: true } },
+        items: {
+          include: {
+            completedUser: { select: { id: true, firstName: true, lastName: true } },
+            assignedUser:  { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { placedAt: 'asc' },
+    });
+
+    const delivered = orders.filter((o: any) => o.status === 'DELIVERED');
+
+    // 1. TIMING
+    const confirmTimes: number[]  = [];
+    const prepTimes: number[]     = [];
+    const deliveryTimes: number[] = [];
+    const totalTimes: number[]    = [];
+
+    for (const o of delivered) {
+      const tC = diffMin(o.placedAt, o.confirmedAt);
+      const tP = diffMin(o.confirmedAt, o.readyAt);
+      const tD = diffMin(o.readyAt, o.deliveredAt);
+      const tT = diffMin(o.placedAt, o.deliveredAt);
+      if (tC !== null) confirmTimes.push(tC);
+      if (tP !== null) prepTimes.push(tP);
+      if (tD !== null) deliveryTimes.push(tD);
+      if (tT !== null) totalTimes.push(tT);
     }
 
-    // Get orders in period
-    const orders = await prisma.order.findMany({
-      where: {
-        createdAt: { gte: startDate },
-        status: { not: 'CANCELLED' },
-      },
-      include: {
-        items: {
-          include: { menuItem: true },
-        },
-        user: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    const avg = (arr: number[]) =>
+      arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
+    const pct = (arr: number[], threshold: number) =>
+      arr.length ? Math.round((arr.filter(v => v <= threshold).length / arr.length) * 100) : null;
 
-    // Calculate revenue over time
-    const revenueByDate: { [key: string]: number } = {};
-    const ordersByHour: { [key: number]: number } = {};
-    
-    orders.forEach((order) => {
-      const date = order.createdAt.toISOString().split('T')[0];
-      const hour = order.createdAt.getHours();
-      
-      revenueByDate[date] = (revenueByDate[date] || 0) + Number(order.totalAmount);
-      ordersByHour[hour] = (ordersByHour[hour] || 0) + 1;
-    });
+    const timing = {
+      avgConfirmMin:  avg(confirmTimes),
+      avgPrepMin:     avg(prepTimes),
+      avgDeliveryMin: avg(deliveryTimes),
+      avgTotalMin:    avg(totalTimes),
+      onTimeRate:     pct(totalTimes, 40),
+      fastOrderRate:  pct(totalTimes, 25),
+      confirmSamples:  confirmTimes.length,
+      prepSamples:     prepTimes.length,
+      deliverySamples: deliveryTimes.length,
+    };
 
-    // Top customers
-    const customerOrders: { [key: string]: { count: number; total: number; name: string } } = {};
-    
-    orders.forEach((order) => {
-      const key = order.userId;
-      if (!customerOrders[key]) {
-        customerOrders[key] = {
-          count: 0,
-          total: 0,
-          name: `${order.user.firstName} ${order.user.lastName}`,
-        };
+    // 2. STAFF PERFORMANCE
+    const staffMap: Record<string, any> = {};
+    const ensureStaff = (u: { id: string; firstName: string; lastName: string }) => {
+      if (!staffMap[u.id]) staffMap[u.id] = {
+        id: u.id, name: `${u.firstName} ${u.lastName}`,
+        confirmTimes: [], deliveryTimes: [], itemPrepTimes: [],
+        confirmCount: 0, deliveryCount: 0, itemCount: 0,
+      };
+      return staffMap[u.id];
+    };
+
+    for (const o of delivered) {
+      if (o.confirmedByUser) {
+        const s = ensureStaff(o.confirmedByUser);
+        s.confirmCount++;
+        const t = diffMin(o.placedAt, o.confirmedAt);
+        if (t !== null) s.confirmTimes.push(t);
       }
-      customerOrders[key].count += 1;
-      customerOrders[key].total += Number(order.totalAmount);
-    });
-
-    const topCustomers = Object.entries(customerOrders)
-      .map(([id, data]) => ({
-        userId: id,
-        name: data.name,
-        orderCount: data.count,
-        totalSpent: data.total,
-      }))
-      .sort((a, b) => b.totalSpent - a.totalSpent)
-      .slice(0, 10);
-
-    // Top products
-    const productSales: { [key: string]: { count: number; revenue: number; name: string } } = {};
-    
-    orders.forEach((order) => {
-      order.items.forEach((item) => {
-        const key = item.menuItemId;
-        if (!productSales[key]) {
-          productSales[key] = {
-            count: 0,
-            revenue: 0,
-            name: item.menuItem.name,
-          };
+      if (o.deliveredByUser) {
+        const s = ensureStaff(o.deliveredByUser);
+        s.deliveryCount++;
+        const t = diffMin(o.readyAt, o.deliveredAt);
+        if (t !== null) s.deliveryTimes.push(t);
+      }
+      for (const item of o.items) {
+        if (item.completedUser && item.startedAt && item.completedAt) {
+          const s = ensureStaff(item.completedUser);
+          s.itemCount++;
+          const t = diffMin(item.startedAt, item.completedAt);
+          if (t !== null) s.itemPrepTimes.push(t);
         }
-        productSales[key].count += item.quantity;
-        productSales[key].revenue += Number(item.subtotal);
-      });
-    });
+      }
+    }
 
-    const topProducts = Object.entries(productSales)
-      .map(([id, data]) => ({
-        productId: id,
-        name: data.name,
-        quantitySold: data.count,
-        revenue: data.revenue,
-      }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
+    const staff = Object.values(staffMap).map((s: any) => ({
+      id: s.id, name: s.name,
+      confirmCount: s.confirmCount, deliveryCount: s.deliveryCount, itemCount: s.itemCount,
+      avgConfirmTime:  avg(s.confirmTimes),
+      avgDeliveryTime: avg(s.deliveryTimes),
+      avgItemPrepTime: avg(s.itemPrepTimes),
+      totalActions: s.confirmCount + s.deliveryCount + s.itemCount,
+    })).sort((a: any, b: any) => b.totalActions - a.totalActions);
 
-    // Summary stats
-    const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    // 3. BOTTLENECKS
+    const slowConfirm  = delivered.filter(o => { const t = diffMin(o.placedAt, o.confirmedAt); return t !== null && t > 5; });
+    const slowPrep     = delivered.filter(o => { const t = diffMin(o.confirmedAt, o.readyAt);  return t !== null && t > 25; });
+    const slowDelivery = delivered.filter(o => { const t = diffMin(o.readyAt, o.deliveredAt);  return t !== null && t > 20; });
+
+    const cAvg = avg(confirmTimes)  ?? 0;
+    const pAvg = avg(prepTimes)     ?? 0;
+    const dAvg = avg(deliveryTimes) ?? 0;
+    const maxAvg = Math.max(cAvg, pAvg, dAvg);
+
+    const bottlenecks = {
+      slowConfirmRate:  delivered.length ? Math.round((slowConfirm.length  / delivered.length) * 100) : 0,
+      slowPrepRate:     delivered.length ? Math.round((slowPrep.length     / delivered.length) * 100) : 0,
+      slowDeliveryRate: delivered.length ? Math.round((slowDelivery.length / delivered.length) * 100) : 0,
+      worstStage: maxAvg === 0 ? null : maxAvg === pAvg ? 'preparation' : maxAvg === dAvg ? 'delivery' : 'confirmation',
+      slowConfirmCount:  slowConfirm.length,
+      slowPrepCount:     slowPrep.length,
+      slowDeliveryCount: slowDelivery.length,
+    };
+
+    // 4. HOURLY HEATMAP
+    const hourly = Array.from({ length: 24 }, (_, h) => ({
+      hour: h, label: `${String(h).padStart(2,'0')}:00`, orders: 0, avgMin: null as number | null,
+    }));
+    for (const o of orders) hourly[new Date(o.placedAt).getHours()].orders++;
+    for (let h = 0; h < 24; h++) {
+      const times = delivered
+        .filter((o: any) => new Date(o.placedAt).getHours() === h)
+        .map((o: any) => diffMin(o.placedAt, o.deliveredAt))
+        .filter((t: number | null): t is number => t !== null);
+      hourly[h].avgMin = avg(times);
+    }
+
+    // 5. DAILY TREND
+    const daily: Record<string, any> = {};
+    for (let i = daysNum - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      daily[key] = { date: key, orders: 0, delivered: 0, revenue: 0, avgMin: null };
+    }
+    for (const o of orders) {
+      const key = new Date(o.placedAt).toISOString().split('T')[0];
+      if (daily[key]) {
+        daily[key].orders++;
+        if (o.status === 'DELIVERED') {
+          daily[key].delivered++;
+          daily[key].revenue += parseFloat((o.totalAmount as any).toString());
+        }
+      }
+    }
+    for (const key of Object.keys(daily)) {
+      const dayStart = new Date(key); dayStart.setHours(0,0,0,0);
+      const dayEnd   = new Date(key); dayEnd.setHours(23,59,59,999);
+      const times = delivered
+        .filter((o: any) => { const d = new Date(o.placedAt); return d >= dayStart && d <= dayEnd; })
+        .map((o: any) => diffMin(o.placedAt, o.deliveredAt))
+        .filter((t: number | null): t is number => t !== null);
+      daily[key].avgMin  = avg(times);
+      daily[key].revenue = Math.round(daily[key].revenue * 100) / 100;
+    }
+
+    // 6. SUMMARY
+    const summary = {
+      totalOrders:    orders.length,
+      deliveredCount: delivered.length,
+      cancelledCount: orders.filter((o: any) => o.status === 'CANCELLED').length,
+      totalRevenue:   Math.round(delivered.reduce((s: number, o: any) => s + parseFloat(o.totalAmount.toString()), 0) * 100) / 100,
+      periodDays:     daysNum,
+    };
 
     res.json({
       success: true,
-      data: {
-        period,
-        summary: {
-          totalOrders,
-          totalRevenue,
-          averageOrderValue,
-        },
-        revenueByDate: Object.entries(revenueByDate).map(([date, revenue]) => ({
-          date,
-          revenue,
-        })),
-        ordersByHour: Object.entries(ordersByHour).map(([hour, count]) => ({
-          hour: parseInt(hour),
-          count,
-        })),
-        topCustomers,
-        topProducts,
-      },
+      data: { summary, timing, bottlenecks, staff, hourly: hourly.filter(h => h.orders > 0 || (h.hour >= 8 && h.hour <= 23)), daily: Object.values(daily) },
     });
   } catch (error) {
     next(error);
