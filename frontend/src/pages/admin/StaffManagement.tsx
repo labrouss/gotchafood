@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminAPI } from '../../services/api';
 import { useState } from 'react';
 import { useToastStore } from '../../components/ToastContainer';
+import { useAuthStore } from '../../store/authStore';
+import { useNavigate } from 'react-router-dom';
 
 const roles = [
   { value: 'CUSTOMER', label: 'Customer', color: 'bg-gray-500' },
@@ -22,14 +24,33 @@ const routingRoles = [
 export default function StaffManagement() {
   const queryClient = useQueryClient();
   const addToast = useToastStore((state) => state.addToast);
+  const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
   
   const [filterRole, setFilterRole] = useState('all');
   const [filterStation, setFilterStation] = useState('all');
   const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showPerformance, setShowPerformance] = useState(true);
+
+  const isAuthorized = !!user && (user.role === 'ADMIN' || user.role === 'STAFF');
 
   const { data, isLoading } = useQuery({
     queryKey: ['all-customers'],
-    queryFn: adminAPI.getCustomers,
+    queryFn: () => adminAPI.getCustomers(),
+    enabled: isAuthorized,
+  });
+
+  const { data: performanceData, isLoading: performanceLoading } = useQuery({
+    queryKey: ['staff-performance', selectedDate],
+    queryFn: () => {
+      const start = new Date(selectedDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(selectedDate);
+      end.setHours(23, 59, 59, 999);
+      return adminAPI.getStaffPerformance(start.toISOString(), end.toISOString());
+    },
+    enabled: isAuthorized && showPerformance,
   });
 
   const updateRoleMutation = useMutation({
@@ -57,12 +78,18 @@ export default function StaffManagement() {
     },
   });
 
+  // Redirect if not authorized
+  if (!isAuthorized) {
+    navigate('/');
+    return null;
+  }
+
   const users = data?.data?.customers || [];
   
   // Filter users
-  const filteredUsers = users.filter((user: any) => {
-    const roleMatch = filterRole === 'all' || user.role === filterRole;
-    const stationMatch = filterStation === 'all' || user.routingRole === filterStation;
+  const filteredUsers = users.filter((u: any) => {
+    const roleMatch = filterRole === 'all' || u.role === filterRole;
+    const stationMatch = filterStation === 'all' || u.routingRole === filterStation;
     return roleMatch && stationMatch;
   });
 
@@ -166,6 +193,135 @@ export default function StaffManagement() {
         </div>
       ) : (
         <>
+          {/* Performance Statistics Section */}
+          {showPerformance && (
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">📊 Daily Performance</h2>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="border border-gray-300 rounded-lg px-4 py-2"
+                  />
+                  <button
+                    onClick={() => setShowPerformance(!showPerformance)}
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-semibold"
+                  >
+                    Hide
+                  </button>
+                </div>
+              </div>
+
+              {performanceLoading ? (
+                <div className="text-center py-6">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {performanceData?.data?.performance
+                    ?.filter((p: any) => p.stats.totalActions > 0)
+                    .map((perf: any) => (
+                      <div key={perf.user.id} className="bg-white rounded-lg shadow-md p-5 border-l-4 border-blue-500">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h3 className="font-bold text-lg text-gray-800">
+                              {perf.user.firstName} {perf.user.lastName}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className={`px-2 py-0.5 rounded text-white text-xs font-semibold ${
+                                perf.user.role === 'ADMIN' ? 'bg-red-500' : 'bg-blue-500'
+                              }`}>
+                                {perf.user.role}
+                              </span>
+                              {perf.user.routingRole && (
+                                <span className="text-gray-600">
+                                  {routingRoles.find(r => r.value === perf.user.routingRole)?.icon}{' '}
+                                  {perf.user.routingRole}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-blue-600">
+                              {perf.stats.totalActions}
+                            </div>
+                            <div className="text-xs text-gray-600">Actions</div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          {perf.stats.ordersConfirmed > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">✓ Orders Confirmed:</span>
+                              <span className="font-bold text-gray-800">{perf.stats.ordersConfirmed}</span>
+                            </div>
+                          )}
+                          
+                          {perf.stats.itemsPrepared > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">🍳 Items Prepared:</span>
+                              <span className="font-bold text-gray-800">{perf.stats.itemsPrepared}</span>
+                            </div>
+                          )}
+                          
+                          {perf.stats.ordersDelivered > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">🚗 Orders Delivered:</span>
+                              <span className="font-bold text-gray-800">{perf.stats.ordersDelivered}</span>
+                            </div>
+                          )}
+
+                          {perf.stats.totalRevenue > 0 && (
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span className="text-gray-600">💰 Revenue:</span>
+                              <span className="font-bold text-green-600">
+                                €{perf.stats.totalRevenue.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+
+                          {perf.stats.avgPrepTime > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">⏱️ Avg Prep Time:</span>
+                              <span className="font-semibold text-gray-800">{perf.stats.avgPrepTime} min</span>
+                            </div>
+                          )}
+
+                          {perf.stats.avgDeliveryTime > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600">🕐 Avg Delivery:</span>
+                              <span className="font-semibold text-gray-800">{perf.stats.avgDeliveryTime} min</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {performanceData?.data?.performance?.filter((p: any) => p.stats.totalActions > 0).length === 0 && (
+                <div className="text-center py-8 bg-white rounded-lg shadow-md">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-gray-600">No activity recorded for this date</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!showPerformance && (
+            <div className="mb-6">
+              <button
+                onClick={() => setShowPerformance(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold"
+              >
+                📊 Show Performance Statistics
+              </button>
+            </div>
+          )}
+
           {/* Staff Section */}
           {staffUsers.length > 0 && (
             <div className="mb-8">

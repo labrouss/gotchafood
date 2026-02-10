@@ -193,6 +193,13 @@ export const adminAPI = {
     const response = await api.patch(`/admin/customers/${id}/routing-role`, { routingRole });
     return response.data;
   },
+  getStaffPerformance: async (startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const response = await api.get(`/admin/staff-performance?${params.toString()}`);
+    return response.data;
+  },
 };
 
 // Analytics API

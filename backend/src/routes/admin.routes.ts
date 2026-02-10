@@ -20,6 +20,7 @@ import {
   updateUserRole,
   updateUserRoutingRole,
 } from '../controllers/admin.controller';
+import { getStaffPerformance } from '../controllers/staff-performance.controller';
 
 const router = Router();
 
@@ -54,5 +55,8 @@ router.get('/customers/:id', getCustomerDetails);
 router.patch('/customers/:id/toggle-status', toggleCustomerStatus);
 router.patch('/customers/:id/role', updateUserRole);
 router.patch('/customers/:id/routing-role', updateUserRoutingRole);
+
+// Staff Performance
+router.get('/staff-performance', getStaffPerformance);
 
 export default router;

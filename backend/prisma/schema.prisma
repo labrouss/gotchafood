@@ -36,8 +36,10 @@ model User {
   rewardTransactions RewardTransaction[]
   
   // Staff tracking relations
-  ordersConfirmed    Order[] @relation("ConfirmedBy")
-  ordersDelivered    Order[] @relation("DeliveredBy")
+  ordersConfirmed    Order[]     @relation("ConfirmedBy")
+  ordersDelivered    Order[]     @relation("DeliveredBy")
+  itemsAssigned      OrderItem[] @relation("ItemAssignedTo")
+  itemsCompleted     OrderItem[] @relation("ItemCompletedBy")
 
   @@map("users")
 }
@@ -174,8 +176,10 @@ model OrderItem {
   assignedTo  String?   @map("assigned_to")
   completedBy String?   @map("completed_by")
 
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem      MenuItem  @relation(fields: [menuItemId], references: [id])
+  assignedUser  User?     @relation("ItemAssignedTo", fields: [assignedTo], references: [id])
+  completedUser User?     @relation("ItemCompletedBy", fields: [completedBy], references: [id])
 
   @@map("order_items")
 }

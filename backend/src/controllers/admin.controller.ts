@@ -738,7 +738,49 @@ export const updateOrderItemStatus = async (
     const item = await prisma.orderItem.update({
       where: { id },
       data: updates,
+      include: {
+        order: {
+          include: {
+            items: true,
+          },
+        },
+      },
     });
+
+    // Check if all items in the order are completed
+    if (status === 'completed') {
+      const allItemsCompleted = item.order.items.every(
+        (orderItem: any) => orderItem.completedAt !== null
+      );
+
+      // If all items are completed and order is still PREPARING, mark as ready
+      if (allItemsCompleted && item.order.status === 'PREPARING') {
+        await prisma.order.update({
+          where: { id: item.orderId },
+          data: {
+            status: 'OUT_FOR_DELIVERY',
+            readyAt: new Date(),
+          },
+        });
+      }
+    }
+
+    // If this is the first item being started, update order to PREPARING
+    if (status === 'started' && item.order.status === 'CONFIRMED') {
+      const anyItemStarted = item.order.items.some(
+        (orderItem: any) => orderItem.startedAt !== null
+      );
+
+      if (anyItemStarted) {
+        await prisma.order.update({
+          where: { id: item.orderId },
+          data: {
+            status: 'PREPARING',
+            startedAt: new Date(),
+          },
+        });
+      }
+    }
 
     res.json({
       success: true,
