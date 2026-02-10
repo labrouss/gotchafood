@@ -40,6 +40,7 @@ model User {
   ordersDelivered    Order[]     @relation("DeliveredBy")
   itemsAssigned      OrderItem[] @relation("ItemAssignedTo")
   itemsCompleted     OrderItem[] @relation("ItemCompletedBy")
+  staffProfile       StaffProfile?
 
   @@map("users")
 }
@@ -258,4 +259,42 @@ model RewardTransaction {
   order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
   @@map("reward_transactions")
+}
+
+// ── Enhancement Pack 4: Staff HR ─────────────────────────────────────────
+
+model StaffProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  employeeId     String    @unique @map("employee_id")          // e.g. EMP-001
+  hiredAt        DateTime  @map("hired_at")
+  firedAt        DateTime? @map("fired_at")
+  firedReason    String?   @db.Text @map("fired_reason")
+  contractType   String    @default("full-time") @map("contract_type")  // full-time | part-time | hourly
+  hourlyRate     Decimal?  @db.Decimal(8,2) @map("hourly_rate")
+  emergencyName  String?   @map("emergency_name")
+  emergencyPhone String?   @map("emergency_phone")
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shifts   WorkShift[]
+
+  @@map("staff_profiles")
+}
+
+model WorkShift {
+  id          String    @id @default(uuid())
+  profileId   String    @map("profile_id")
+  dayOfWeek   Int       @map("day_of_week")   // 0=Sun … 6=Sat
+  startTime   String    @map("start_time")    // "09:00"
+  endTime     String    @map("end_time")      // "17:00"
+  station     String?                         // kitchen | barista | …
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  profile StaffProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("work_shifts")
 }

@@ -250,3 +250,43 @@ export const loyaltyAPI = {
     return response.data;
   },
 };
+
+// ── Staff HR API ───────────────────────────────────────────────────────────
+export const staffhrAPI = {
+  getAll: async () => {
+    const r = await api.get('/staffhr');
+    return r.data;
+  },
+  hire: async (data: any) => {
+    const r = await api.post('/staffhr', data);
+    return r.data;
+  },
+  update: async (id: string, data: any) => {
+    const r = await api.patch(`/staffhr/${id}`, data);
+    return r.data;
+  },
+  toggleLogin: async (id: string) => {
+    const r = await api.patch(`/staffhr/${id}/toggle-login`);
+    return r.data;
+  },
+  fire: async (id: string, reason: string) => {
+    const r = await api.post(`/staffhr/${id}/fire`, { reason });
+    return r.data;
+  },
+  rehire: async (id: string, role: string, routingRole?: string) => {
+    const r = await api.post(`/staffhr/${id}/rehire`, { role, routingRole });
+    return r.data;
+  },
+  resetPassword: async (id: string, password: string) => {
+    const r = await api.post(`/staffhr/${id}/reset-password`, { password });
+    return r.data;
+  },
+  saveSchedule: async (id: string, shifts: any[]) => {
+    const r = await api.put(`/staffhr/${id}/schedule`, { shifts });
+    return r.data;
+  },
+  getWeeklySchedule: async () => {
+    const r = await api.get('/staffhr/schedule/weekly');
+    return r.data;
+  },
+};

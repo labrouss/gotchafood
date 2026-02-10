@@ -17,6 +17,7 @@ import userRoutes from './routes/user.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import reviewRoutes from './routes/review.routes';
 import loyaltyRoutes from './routes/loyalty.routes';
+import staffhrRoutes from './routes/staffhr.routes';
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware';
@@ -98,7 +99,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/loyalty',  loyaltyRoutes);
+app.use('/api/staffhr',  staffhrRoutes);
 
 // Error handling
 app.use(notFound);

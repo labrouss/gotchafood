@@ -19,6 +19,7 @@ import StaffManagement from './pages/admin/StaffManagement';
 import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
 import InsightsPage from './pages/admin/InsightsPage';
+import StaffHR from './pages/admin/StaffHR';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 import CreateReview from './pages/reviews/CreateReview';
 import MyReviews from './pages/reviews/MyReviews';
@@ -109,6 +110,9 @@ function App() {
                         <Link to="/admin/customers" className="block px-4 py-2 hover:bg-gray-100">
                           Πελάτες
                         </Link>
+                        <Link to="/admin/staff-hr" className="block px-4 py-2 hover:bg-gray-100">
+                          👥 Staff HR
+                        </Link>
                         <Link to="/admin/staff" className="block px-4 py-2 hover:bg-gray-100 rounded-b-lg">
                           👥 Staff
                         </Link>
@@ -188,6 +192,7 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/analytics" element={<EnhancedDashboard />} />
             <Route path="/admin/insights"  element={<InsightsPage />} />
+            <Route path="/admin/staff-hr"   element={<StaffHR />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
