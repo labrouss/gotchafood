@@ -167,6 +167,10 @@ export const adminAPI = {
     });
     return response.data;
   },
+  updateOrderItemStatus: async (id: string, status: 'started' | 'completed') => {
+    const response = await api.patch(`/admin/order-items/${id}/status`, { status });
+    return response.data;
+  },
   cancelOrder: async (id: string, reason?: string) => {
     const response = await api.post(`/admin/orders/${id}/cancel`, { reason });
     return response.data;

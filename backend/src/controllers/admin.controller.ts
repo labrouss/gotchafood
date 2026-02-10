@@ -477,6 +477,12 @@ export const getAllOrders = async (
         items: {
           include: {
             menuItem: true,
+            assignedUser: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+            completedUser: {
+              select: { id: true, firstName: true, lastName: true },
+            },
           },
         },
         payment: true,
@@ -735,48 +741,41 @@ export const updateOrderItemStatus = async (
       if (userId) updates.completedBy = userId;
     }
 
+    // Step 1: update the item itself (no nested items — avoids stale snapshot)
     const item = await prisma.orderItem.update({
       where: { id },
       data: updates,
-      include: {
-        order: {
-          include: {
-            items: true,
-          },
-        },
-      },
+      include: { order: true },
     });
 
-    // Check if all items in the order are completed
-    if (status === 'completed') {
-      const allItemsCompleted = item.order.items.every(
-        (orderItem: any) => orderItem.completedAt !== null
-      );
+    // Step 2: re-fetch ALL sibling items fresh from DB
+    const allSiblingItems = await prisma.orderItem.findMany({
+      where: { orderId: item.orderId },
+    });
 
-      // If all items are completed and order is still PREPARING, mark as ready
-      if (allItemsCompleted && item.order.status === 'PREPARING') {
+    // Step 3: first item started -> move order to PREPARING
+    if (status === 'started' && item.order.status === 'CONFIRMED') {
+      await prisma.order.update({
+        where: { id: item.orderId },
+        data: {
+          status: 'PREPARING',
+          preparingAt: new Date(),
+          ...(userId && { preparingBy: userId }),
+        },
+      });
+    }
+
+    // Step 4: item completed -> check if ALL siblings are now done
+    if (status === 'completed') {
+      const allDone = allSiblingItems.every((i) => i.completedAt !== null);
+
+      if (allDone && (item.order.status === 'PREPARING' || item.order.status === 'CONFIRMED')) {
         await prisma.order.update({
           where: { id: item.orderId },
           data: {
             status: 'OUT_FOR_DELIVERY',
             readyAt: new Date(),
-          },
-        });
-      }
-    }
-
-    // If this is the first item being started, update order to PREPARING
-    if (status === 'started' && item.order.status === 'CONFIRMED') {
-      const anyItemStarted = item.order.items.some(
-        (orderItem: any) => orderItem.startedAt !== null
-      );
-
-      if (anyItemStarted) {
-        await prisma.order.update({
-          where: { id: item.orderId },
-          data: {
-            status: 'PREPARING',
-            startedAt: new Date(),
+            ...(userId && { readyBy: userId }),
           },
         });
       }
