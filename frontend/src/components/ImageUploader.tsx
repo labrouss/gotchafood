@@ -120,9 +120,9 @@ function CropModal({ src, aspectRatio, onConfirm, onCancel }: {
         <div className="bg-gray-800 px-5 py-3 flex items-center justify-between">
           <h3 className="text-white font-bold text-lg">✂️ Crop Image</h3>
           <div className="flex gap-2">
-            <button onClick={resetCrop} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm">Reset</button>
-            <button onClick={onCancel}  className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm">Cancel</button>
-            <button onClick={handleConfirm} disabled={!crop}
+            <button type="button" onClick={resetCrop} className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm">Reset</button>
+            <button type="button" onClick={onCancel}  className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm">Cancel</button>
+            <button type="button" onClick={handleConfirm} disabled={!crop}
               className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-bold disabled:opacity-40">
               ✓ Apply Crop
             </button>
@@ -249,6 +249,14 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
     <div className="space-y-3">
       <div className="text-sm font-semibold text-gray-700">{label}</div>
 
+      {/* ── Always-mounted hidden file inputs ─────────────────────────── */}
+      {/* These must never be inside conditional blocks — if they unmount   */}
+      {/* while the OS file picker is open, the onChange never fires.       */}
+      <input ref={galleryInputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChosen(f); e.target.value = ''; }} />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChosen(f); e.target.value = ''; }} />
+
       {/* ── GALLERY view ── */}
       {isGalleryMode && (
         <div className="space-y-2">
@@ -273,12 +281,12 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
                     {/* hover controls */}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5">
                       {!img.isPrimary && (
-                        <button onClick={() => handleSetPrimary(img)}
+                        <button type="button" onClick={() => handleSetPrimary(img)}
                           className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-lg font-semibold w-24">
                           ★ Set Primary
                         </button>
                       )}
-                      <button onClick={() => handleDelete(img)}
+                      <button type="button" onClick={() => handleDelete(img)}
                         className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg font-semibold w-24">
                         🗑 Remove
                       </button>
@@ -292,12 +300,10 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
           )}
 
           {/* add to gallery */}
-          <button onClick={() => galleryInputRef.current?.click()} disabled={uploading}
+          <button type="button" onClick={() => galleryInputRef.current?.click()} disabled={uploading}
             className="w-full border-2 border-dashed border-gray-300 hover:border-indigo-400 rounded-xl py-3 text-sm text-gray-500 hover:text-indigo-600 font-semibold transition flex items-center justify-center gap-2 disabled:opacity-50">
             {uploading ? '⏳ Uploading…' : '＋ Add Image to Gallery'}
           </button>
-          <input ref={galleryInputRef} type="file" accept="image/*" className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChosen(f); e.target.value = ''; }} />
         </div>
       )}
 
@@ -307,7 +313,7 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
           {/* tabs */}
           <div className="flex border-b">
             {(['upload','url'] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)}
+              <button type="button" key={t} onClick={() => setTab(t)}
                 className={`px-4 py-2 text-sm font-semibold border-b-2 transition -mb-px capitalize ${tab===t?'border-indigo-600 text-indigo-700':'border-transparent text-gray-400 hover:text-gray-600'}`}>
                 {t === 'upload' ? '⬆️ Upload' : '🔗 URL'}
               </button>
@@ -335,8 +341,6 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
                   <div className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP, GIF · Max 10 MB</div>
                 </>
               )}
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) handleFileChosen(f); e.target.value = ''; }} />
             </div>
           )}
 
@@ -345,7 +349,7 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
               <input value={urlInput} onChange={e => setUrlInput(e.target.value)}
                 placeholder="https://example.com/image.jpg"
                 className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
-              <button onClick={() => { onChange?.(urlInput); }}
+              <button type="button" onClick={() => { onChange?.(urlInput); }}
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold">
                 Apply
               </button>
@@ -357,9 +361,9 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
             <div className="relative rounded-xl overflow-hidden border group" style={{ aspectRatio: String(aspectRatio) }}>
               <img src={resolveUrl(currentUrl)} alt="preview" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                <button onClick={() => { handleFileChosen(new File([], '')); fileInputRef.current?.click(); }}
+                <button type="button" onClick={() => { handleFileChosen(new File([], '')); fileInputRef.current?.click(); }}
                   className="px-3 py-1.5 bg-white text-gray-800 rounded-lg text-xs font-bold">✏️ Replace</button>
-                <button onClick={() => { onChange?.(''); setUrlInput(''); }}
+                <button type="button" onClick={() => { onChange?.(''); setUrlInput(''); }}
                   className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold">🗑 Remove</button>
               </div>
             </div>
