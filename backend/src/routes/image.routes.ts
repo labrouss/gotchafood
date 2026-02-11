@@ -9,6 +9,7 @@ import {
   reorderProductImages,
   setPrimaryImage,
 } from '../controllers/image.controller';
+import { getStockImages } from '../controllers/stock-images.controller';
 
 const router = Router();
 
@@ -17,6 +18,9 @@ router.use(authorize('ADMIN', 'STAFF'));
 
 // General single-image upload (returns url, used by category imageUrl)
 router.post('/upload', upload.single('image'), uploadImage);
+
+// Stock images gallery
+router.get('/stock', getStockImages);
 
 // Product gallery
 router.get('/products/:id/images',                    getProductImages);

@@ -159,7 +159,7 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
   const fileInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  const [tab,         setTab]        = useState<'upload'|'url'>('upload');
+  const [tab,         setTab]        = useState<'upload'|'url'|'stock'>('upload');
   const [urlInput,    setUrlInput]   = useState(value || '');
   const [uploading,   setUploading]  = useState(false);
   const [cropSrc,     setCropSrc]    = useState<string | null>(null);
@@ -168,10 +168,18 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
   const [localGallery,setLocalGallery]=useState<GalleryImage[]>(gallery || []);
   const [dragIdx,     setDragIdx]    = useState<number | null>(null);
   const [error,       setError]      = useState('');
+  const [stockImages, setStockImages]= useState<{name:string;url:string}[]>([]);
 
   const isGalleryMode = !!productId;
 
   useEffect(() => { if (gallery) setLocalGallery(gallery); }, [gallery]);
+
+  // Load stock images when stock tab is selected
+  useEffect(() => {
+    if (tab === 'stock' && stockImages.length === 0) {
+      imageAPI.getStockImages().then(r => setStockImages(r.data.images || [])).catch(() => {});
+    }
+  }, [tab, stockImages.length]);
 
   // ── upload flow ─────────────────────────────────────────────────────
   const uploadWithCrop = async (file: File, crop?: Crop) => {
@@ -311,10 +319,10 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
         <>
           {/* tabs */}
           <div className="flex border-b">
-            {(['upload','url'] as const).map(t => (
+            {(['upload','url','stock'] as const).map(t => (
               <button type="button" key={t} onClick={() => setTab(t)}
                 className={`px-4 py-2 text-sm font-semibold border-b-2 transition -mb-px capitalize ${tab===t?'border-indigo-600 text-indigo-700':'border-transparent text-gray-400 hover:text-gray-600'}`}>
-                {t === 'upload' ? '⬆️ Upload' : '🔗 URL'}
+                {t === 'upload' ? '⬆️ Upload' : t === 'url' ? '🔗 URL' : '📂 Stock'}
               </button>
             ))}
           </div>
@@ -352,6 +360,35 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold">
                 Apply
               </button>
+            </div>
+          )}
+
+          {tab === 'stock' && (
+            <div>
+              {stockImages.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <div className="text-4xl mb-2">📂</div>
+                  <p className="text-sm">No stock images available</p>
+                  <p className="text-xs mt-1">Place images in <code className="bg-gray-100 px-1 rounded">backend/public/stock-images/</code></p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 max-h-80 overflow-y-auto">
+                  {stockImages.map((img, idx) => (
+                    <button type="button" key={idx}
+                      onClick={() => { onChange?.(img.url); setTab('upload'); }}
+                      className="relative rounded-lg overflow-hidden border-2 border-gray-200 hover:border-indigo-500 transition group"
+                      style={{ aspectRatio: String(aspectRatio) }}
+                    >
+                      <img src={resolveImageUrl(img.url) || ''} alt={img.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
+                        <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-bold bg-indigo-600 px-2 py-1 rounded">
+                          Select
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

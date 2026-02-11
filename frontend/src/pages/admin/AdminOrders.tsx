@@ -360,46 +360,78 @@ export default function AdminOrders() {
                   </div>
 
                   {/* Status Actions */}
-                  {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
-                    <div className="mt-6 flex gap-3">
-                      {order.status === 'PENDING' && (
+                  <div className="mt-6 space-y-3">
+                    {/* Workflow buttons - only show for non-final statuses */}
+                    {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+                      <div className="flex gap-3">
+                        {order.status === 'PENDING' && (
+                          <button
+                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'CONFIRMED' })}
+                            disabled={updateStatusMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
+                          >
+                            Confirm Order
+                          </button>
+                        )}
+                        {order.status === 'CONFIRMED' && (
+                          <button
+                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'PREPARING' })}
+                            disabled={updateStatusMutation.isPending}
+                            className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
+                          >
+                            Start Preparing
+                          </button>
+                        )}
+                        {order.status === 'PREPARING' && (
+                          <button
+                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'OUT_FOR_DELIVERY' })}
+                            disabled={updateStatusMutation.isPending}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
+                          >
+                            Ready for Delivery
+                          </button>
+                        )}
+                        {order.status === 'OUT_FOR_DELIVERY' && (
+                          <button
+                            onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'DELIVERED' })}
+                            disabled={updateStatusMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
+                          >
+                            Mark as Delivered
+                          </button>
+                        )}
                         <button
-                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'CONFIRMED' })}
+                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'CANCELLED' })}
                           disabled={updateStatusMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
+                          className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
                         >
-                          Confirm Order
+                          Cancel Order
                         </button>
-                      )}
-                      {order.status === 'CONFIRMED' && (
-                        <button
-                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'PREPARING' })}
-                          disabled={updateStatusMutation.isPending}
-                          className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
-                        >
-                          Start Preparing
-                        </button>
-                      )}
-                      {order.status === 'PREPARING' && (
-                        <button
-                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'OUT_FOR_DELIVERY' })}
-                          disabled={updateStatusMutation.isPending}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
-                        >
-                          Ready for Delivery
-                        </button>
-                      )}
-                      {order.status === 'OUT_FOR_DELIVERY' && (
-                        <button
-                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'DELIVERED' })}
-                          disabled={updateStatusMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
-                        >
-                          Mark as Delivered
-                        </button>
-                      )}
+                      </div>
+                    )}
+
+                    {/* Manual status override dropdown - ALWAYS available */}
+                    <div className="flex items-center gap-3 pt-2 border-t">
+                      <label className="text-sm font-semibold text-gray-600">Change status to:</label>
+                      <select
+                        value={order.status}
+                        onChange={(e) => {
+                          if (e.target.value !== order.status && confirm(`Change status from ${statusLabels[order.status]} to ${statusLabels[e.target.value]}?`)) {
+                            updateStatusMutation.mutate({ id: order.id, status: e.target.value });
+                          }
+                        }}
+                        disabled={updateStatusMutation.isPending}
+                        className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="CONFIRMED">Confirmed</option>
+                        <option value="PREPARING">Preparing</option>
+                        <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
+                        <option value="DELIVERED">Delivered</option>
+                        <option value="CANCELLED">Cancelled</option>
+                      </select>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>

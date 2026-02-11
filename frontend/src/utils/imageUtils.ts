@@ -9,9 +9,16 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
   }
   
   // Relative path — prepend backend base
-  const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
-  const backendBase = apiUrl.replace('/api', ''); // http://localhost:3000
+  let apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
   
+  // If env is set to localhost but we're not on localhost, use current origin + port 3000
+  if (apiUrl.includes('localhost') && typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    const origin = window.location.origin; // http://dockerhost.hpehellas-demo.com:5173
+    const baseUrl = origin.replace(':5173', ':3000'); // Replace frontend port with backend port
+    return `${baseUrl}${url}`;
+  }
+  
+  const backendBase = apiUrl.replace('/api', ''); // http://localhost:3000
   return `${backendBase}${url}`;
 }
 

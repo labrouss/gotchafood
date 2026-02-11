@@ -334,4 +334,8 @@ export const imageAPI = {
     const r = await api.patch(`/images/products/${productId}/images/${imageId}/primary`);
     return r.data;
   },
+  getStockImages: async () => {
+    const r = await api.get('/images/stock');
+    return r.data;
+  },
 };

@@ -107,6 +107,7 @@ app.use('/api/images',   imageRoutes);
 
 // Serve uploaded images as static files
 app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
+app.use('/stock-images', express.static(path.join(process.cwd(), 'public', 'stock-images')));
 
 // Error handling
 app.use(notFound);

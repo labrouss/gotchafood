@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { menuAPI, categoryAPI } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import { useToastStore } from '../components/ToastContainer';
+import { resolveImageUrl, getImagePlaceholder } from '../utils/imageUtils';
 
 export default function MenuPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -82,14 +83,33 @@ export default function MenuPage() {
               key={item.id}
               className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition transform hover:-translate-y-1"
             >
-              <div className="h-40 bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center relative">
-                <span className="text-5xl">🍽️</span>
-                {item.isPopular && (
-                  <span className="absolute top-2 right-2 bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded">
-                    ⭐ Popular
-                  </span>
-                )}
-              </div>
+              {/* Product Image */}
+              {item.imageUrl ? (
+                <div className="h-48 relative overflow-hidden bg-gray-100">
+                  <img
+                    src={resolveImageUrl(item.imageUrl) || getImagePlaceholder('product')}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = getImagePlaceholder('product');
+                    }}
+                  />
+                  {item.isPopular && (
+                    <span className="absolute top-2 right-2 bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded shadow-md">
+                      ⭐ Popular
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="h-48 bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center relative">
+                  <span className="text-5xl">🍽️</span>
+                  {item.isPopular && (
+                    <span className="absolute top-2 right-2 bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-1 rounded">
+                      ⭐ Popular
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="p-4">
                 <div className="text-xs text-gray-500 mb-1">
                   {item.category.name}

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HomePage from './pages/HomePage';
 import MenuPage from './pages/MenuPage';
@@ -79,13 +79,7 @@ function App() {
                         ⚙️ Admin
                       </button>
                       <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                        <Link to="/admin" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
-                          Dashboard
-                        </Link>
-                        <Link to="/admin/analytics" className="block px-4 py-2 hover:bg-gray-100">
-                          📊 Analytics
-                        </Link>
-                        <Link to="/admin/insights" className="block px-4 py-2 hover:bg-gray-100">
+                        <Link to="/admin/insights" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
                           📈 Insights
                         </Link>
                         <Link to="/admin/kitchen" className="block px-4 py-2 hover:bg-gray-100">
@@ -189,7 +183,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             
             {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<Navigate to="/admin/insights" replace />} />
             <Route path="/admin/analytics" element={<EnhancedDashboard />} />
             <Route path="/admin/insights"  element={<InsightsPage />} />
             <Route path="/admin/staff-hr"   element={<StaffHR />} />
