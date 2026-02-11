@@ -1,4 +1,5 @@
 import express, { Application } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -18,6 +19,7 @@ import analyticsRoutes from './routes/analytics.routes';
 import reviewRoutes from './routes/review.routes';
 import loyaltyRoutes from './routes/loyalty.routes';
 import staffhrRoutes from './routes/staffhr.routes';
+import imageRoutes from './routes/image.routes';
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware';
@@ -101,6 +103,10 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/loyalty',  loyaltyRoutes);
 app.use('/api/staffhr',  staffhrRoutes);
+app.use('/api/images',   imageRoutes);
+
+// Serve uploaded images as static files
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
 
 // Error handling
 app.use(notFound);

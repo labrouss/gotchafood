@@ -103,10 +103,24 @@ model MenuItem {
   calories    Int?
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
-  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category    Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   orderItems  OrderItem[]
+  images      ProductImage[]
 
   @@map("menu_items")
+}
+
+model ProductImage {
+  id          String   @id @default(uuid())
+  menuItemId  String   @map("menu_item_id")
+  url         String
+  sortOrder   Int      @default(0) @map("sort_order")
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
 }
 
 model Order {

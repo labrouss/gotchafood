@@ -290,3 +290,48 @@ export const staffhrAPI = {
     return r.data;
   },
 };
+
+// ── Image Upload API ───────────────────────────────────────────────────────
+export const imageAPI = {
+  // Upload a single image, optionally with crop params → returns { url }
+  uploadSingle: async (file: File, crop?: { x: number; y: number; w: number; h: number }) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    if (crop) {
+      fd.append('cropX', String(crop.x));
+      fd.append('cropY', String(crop.y));
+      fd.append('cropW', String(crop.w));
+      fd.append('cropH', String(crop.h));
+    }
+    const r = await api.post('/images/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return r.data;
+  },
+
+  // Product gallery
+  getProductImages: async (productId: string) => {
+    const r = await api.get(`/images/products/${productId}/images`);
+    return r.data;
+  },
+  addProductImage: async (productId: string, file: File, crop?: { x: number; y: number; w: number; h: number }) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    if (crop) {
+      fd.append('cropX', String(crop.x)); fd.append('cropY', String(crop.y));
+      fd.append('cropW', String(crop.w)); fd.append('cropH', String(crop.h));
+    }
+    const r = await api.post(`/images/products/${productId}/images`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return r.data;
+  },
+  deleteProductImage: async (productId: string, imageId: string) => {
+    const r = await api.delete(`/images/products/${productId}/images/${imageId}`);
+    return r.data;
+  },
+  reorderProductImages: async (productId: string, orderedIds: string[]) => {
+    const r = await api.put(`/images/products/${productId}/images/reorder`, { orderedIds });
+    return r.data;
+  },
+  setPrimary: async (productId: string, imageId: string) => {
+    const r = await api.patch(`/images/products/${productId}/images/${imageId}/primary`);
+    return r.data;
+  },
+};

@@ -18,7 +18,13 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\""
   },
-  "keywords": ["food", "ordering", "nodejs", "express", "mysql"],
+  "keywords": [
+    "food",
+    "ordering",
+    "nodejs",
+    "express",
+    "mysql"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -36,7 +42,9 @@
     "swagger-ui-express": "^5.0.0",
     "zod": "^3.22.4",
     "nodemailer": "^6.9.8",
-    "socket.io": "^4.6.1"
+    "socket.io": "^4.6.1",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
@@ -59,7 +67,8 @@
     "prisma": "^5.9.1",
     "ts-jest": "^29.1.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/multer": "^1.4.11"
   },
   "engines": {
     "node": ">=20.0.0",

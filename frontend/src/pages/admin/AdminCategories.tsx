@@ -4,6 +4,7 @@ import { adminAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import ImageUploader from '../../components/ImageUploader';
 
 const BLANK = { name: '', nameEn: '', description: '', slug: '', imageUrl: '', sortOrder: 0, isActive: true };
 
@@ -199,12 +200,12 @@ export default function AdminCategories() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Image URL</label>
-                <input value={form.imageUrl} onChange={e => set('imageUrl', e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm focus:border-red-500 focus:outline-none" placeholder="https://…" />
-                {form.imageUrl && (
-                  <img src={form.imageUrl} alt="preview" className="mt-2 h-16 rounded-lg object-cover" onError={e=>(e.currentTarget.style.display='none')} />
-                )}
+                <ImageUploader
+                  value={form.imageUrl}
+                  onChange={url => set('imageUrl', url)}
+                  label="Category Image"
+                  aspectRatio={16/9}
+                />
               </div>
 
               <label className="flex items-center gap-2 cursor-pointer select-none">

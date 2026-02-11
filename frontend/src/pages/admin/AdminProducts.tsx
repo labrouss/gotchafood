@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminAPI, menuAPI } from '../../services/api';
+import { adminAPI, menuAPI, imageAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import ImageUploader from '../../components/ImageUploader';
 
 const STATIONS = [
   { value: '',          label: '— None —',   icon: '' },
@@ -38,6 +39,7 @@ export default function AdminProducts() {
   const [modal,         setModal]         = useState(false);
   const [deleteTarget,  setDeleteTarget]  = useState<any>(null);
   const [editingId,     setEditingId]     = useState<string | null>(null);
+  const [gallery,       setGallery]       = useState<any[]>([]);
   const [form,          setForm]          = useState({ ...BLANK });
   const [stationFilter, setStationFilter] = useState('all');
   const [search,        setSearch]        = useState('');
@@ -78,8 +80,8 @@ export default function AdminProducts() {
     return matchStation && matchSearch;
   });
 
-  const openCreate = () => { setForm({ ...BLANK }); setEditingId(null); setModal(true); };
-  const openEdit   = (p: any) => {
+  const openCreate = () => { setForm({ ...BLANK }); setEditingId(null); setGallery([]); setModal(true); };
+  const openEdit   = async (p: any) => {
     setForm({
       categoryId: p.categoryId, name: p.name, nameEn: p.nameEn || '',
       description: p.description || '', price: parseFloat(p.price),
@@ -87,7 +89,13 @@ export default function AdminProducts() {
       sortOrder: p.sortOrder, prepTime: p.prepTime || 10, calories: p.calories || 0, station: p.station || '',
     });
     setEditingId(p.id);
+    setGallery([]);
     setModal(true);
+    // Load gallery images
+    try {
+      const r = await imageAPI.getProductImages(p.id);
+      setGallery(r.data.images || []);
+    } catch {}
   };
   const closeModal = () => { setModal(false); setEditingId(null); setForm({ ...BLANK }); };
 
@@ -269,21 +277,38 @@ export default function AdminProducts() {
                 </div>
               </div>
 
-              {/* ── SECTION: Description & Media ── */}
+              {/* ── SECTION: Description ── */}
               <div>
-                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Description & Media</div>
-                <div className="space-y-3">
-                  <Field label="Description">
-                    <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} className={cls} />
-                  </Field>
-                  <Field label="Image URL">
-                    <input value={form.imageUrl} onChange={e => set('imageUrl', e.target.value)} className={cls} placeholder="https://…" />
-                  </Field>
-                  {form.imageUrl && (
-                    <img src={form.imageUrl} alt="preview" className="h-28 rounded-xl object-cover w-full"
-                      onError={e => (e.currentTarget.style.display = 'none')} />
-                  )}
-                </div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Description</div>
+                <Field label="Description">
+                  <textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} className={cls} />
+                </Field>
+              </div>
+
+              {/* ── SECTION: Images ── */}
+              <div>
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Images</div>
+                {editingId ? (
+                  /* Gallery mode when editing an existing product */
+                  <ImageUploader
+                    productId={editingId}
+                    gallery={gallery}
+                    onGalleryChange={imgs => { setGallery(imgs); if (imgs[0]) set('imageUrl', imgs[0].url); }}
+                    label=""
+                    aspectRatio={1}
+                  />
+                ) : (
+                  /* Single upload for new product (gallery available after save) */
+                  <>
+                    <ImageUploader
+                      value={form.imageUrl}
+                      onChange={url => set('imageUrl', url)}
+                      label=""
+                      aspectRatio={1}
+                    />
+                    <p className="text-xs text-gray-400 mt-1">💡 Save the product first to unlock the full gallery with multiple images.</p>
+                  </>
+                )}
               </div>
 
               {/* ── SECTION: Options ── */}
