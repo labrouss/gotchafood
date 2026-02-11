@@ -83,9 +83,50 @@ export default function StaffHR() {
   });
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const hireMut     = useMutation({ mutationFn: () => staffhrAPI.hire(hireForm),        onSuccess: (r) => { queryClient.invalidateQueries({queryKey:['staffhr']}); addToast(r.message); setShowHireModal(false); setHireForm({...blankHire}); }, onError:(e:any)=>addToast(e.response?.data?.message??'Error') });
+  const hireMut = useMutation({
+    mutationFn: () => {
+      const payload: any = { ...hireForm };
+      // coerce numeric fields — backend Zod still expects number or undefined
+      if (payload.hourlyRate === '' || payload.hourlyRate === undefined) {
+        delete payload.hourlyRate;
+      } else {
+        payload.hourlyRate = parseFloat(payload.hourlyRate);
+      }
+      // strip empty optional strings so Zod doesn't choke on them
+      if (!payload.phone)          delete payload.phone;
+      if (!payload.routingRole)    delete payload.routingRole;
+      if (!payload.emergencyName)  delete payload.emergencyName;
+      if (!payload.emergencyPhone) delete payload.emergencyPhone;
+      if (!payload.notes)          delete payload.notes;
+      return staffhrAPI.hire(payload);
+    },
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ['staffhr'] });
+      addToast(r.message);
+      setShowHireModal(false);
+      setHireForm({ ...blankHire });
+    },
+    onError: (e: any) => addToast(e.response?.data?.message ?? 'Error'),
+  });
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const updateMut   = useMutation({ mutationFn: (d:any)=> staffhrAPI.update(d.id,d),    onSuccess: (r) => { queryClient.invalidateQueries({queryKey:['staffhr']}); addToast(r.message); setEditTarget(null); },                                    onError:(e:any)=>addToast(e.response?.data?.message??'Error') });
+  const updateMut = useMutation({
+    mutationFn: (d: any) => {
+      const payload = { ...d };
+      if (payload.hourlyRate === '' || payload.hourlyRate === undefined) {
+        payload.hourlyRate = null;
+      } else {
+        payload.hourlyRate = parseFloat(payload.hourlyRate);
+      }
+      if (!payload.routingRole) payload.routingRole = null;
+      return staffhrAPI.update(payload.id, payload);
+    },
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ['staffhr'] });
+      addToast(r.message);
+      setEditTarget(null);
+    },
+    onError: (e: any) => addToast(e.response?.data?.message ?? 'Error'),
+  });
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const toggleMut   = useMutation({ mutationFn: (id:string)=>staffhrAPI.toggleLogin(id),onSuccess: (r) => { queryClient.invalidateQueries({queryKey:['staffhr']}); addToast(r.message); },                                                        onError:(e:any)=>addToast(e.response?.data?.message??'Error') });
   // eslint-disable-next-line react-hooks/rules-of-hooks
