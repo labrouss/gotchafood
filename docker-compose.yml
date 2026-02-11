@@ -38,7 +38,6 @@ services:
       PORT: 3000
     volumes:
       - ./backend:/app
-      - uploads_data:/app/public/uploads
     depends_on:
       database:
         condition: service_healthy
@@ -87,4 +86,3 @@ networks:
 
 volumes:
   mysql_data:
-  uploads_data:
