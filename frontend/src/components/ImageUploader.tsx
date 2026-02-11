@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { imageAPI } from '../services/api';
+import { resolveImageUrl, getImagePlaceholder } from '../utils/imageUtils';
 
 // ── types ─────────────────────────────────────────────────────────────────
 interface GalleryImage { id: string; url: string; isPrimary: boolean; sortOrder: number; }
@@ -242,8 +243,6 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
 
   // ── render ───────────────────────────────────────────────────────────
   const currentUrl = value || '';
-  const API_BASE   = (import.meta as any).env?.VITE_API_URL?.replace('/api','') || 'http://localhost:3000';
-  const resolveUrl = (url: string) => url.startsWith('http') ? url : `${API_BASE}${url}`;
 
   return (
     <div className="space-y-3">
@@ -274,7 +273,7 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
                       ${dragIdx === idx ? 'opacity-40 scale-95' : 'hover:border-indigo-300'} transition-all`}
                     style={{ aspectRatio: '1' }}
                   >
-                    <img src={resolveUrl(img.url)} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                    <img src={resolveImageUrl(img.url)} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
                     {img.isPrimary && (
                       <div className="absolute top-1 left-1 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded font-bold">★ Primary</div>
                     )}
@@ -359,7 +358,7 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
           {/* current preview */}
           {currentUrl && (
             <div className="relative rounded-xl overflow-hidden border group" style={{ aspectRatio: String(aspectRatio) }}>
-              <img src={resolveUrl(currentUrl)} alt="preview" className="w-full h-full object-cover" />
+              <img src={resolveImageUrl(currentUrl)} alt="preview" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                 <button type="button" onClick={() => { handleFileChosen(new File([], '')); fileInputRef.current?.click(); }}
                   className="px-3 py-1.5 bg-white text-gray-800 rounded-lg text-xs font-bold">✏️ Replace</button>

@@ -148,18 +148,32 @@ export const deleteProductImage = async (req: Request, res: Response, next: Next
 
     await prisma.productImage.delete({ where: { id: imageId } });
 
-    // If deleted was primary, promote next image
-    if (image.isPrimary) {
-      const next = await prisma.productImage.findFirst({
-        where: { menuItemId: image.menuItemId },
-        orderBy: { sortOrder: 'asc' },
-      });
-      if (next) {
-        await prisma.productImage.update({ where: { id: next.id }, data: { isPrimary: true } });
-        await prisma.menuItem.update({ where: { id: image.menuItemId }, data: { imageUrl: next.url } });
-      } else {
-        await prisma.menuItem.update({ where: { id: image.menuItemId }, data: { imageUrl: null } });
+    // Always sync menuItem.imageUrl with current primary or null
+    const remaining = await prisma.productImage.findMany({
+      where: { menuItemId: image.menuItemId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    if (remaining.length > 0) {
+      // Set first remaining as primary if deleted was primary
+      if (image.isPrimary) {
+        await prisma.productImage.update({
+          where: { id: remaining[0].id },
+          data: { isPrimary: true },
+        });
       }
+      // Sync menuItem to current primary
+      const primary = remaining.find(img => img.isPrimary) || remaining[0];
+      await prisma.menuItem.update({
+        where: { id: image.menuItemId },
+        data: { imageUrl: primary.url },
+      });
+    } else {
+      // No images left — clear menuItem.imageUrl
+      await prisma.menuItem.update({
+        where: { id: image.menuItemId },
+        data: { imageUrl: null },
+      });
     }
 
     res.json({ success: true, message: 'Image deleted' });

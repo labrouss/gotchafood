@@ -239,6 +239,18 @@ export const createMenuItem = async (
       },
     });
 
+    // Auto-create ProductImage record if imageUrl was provided
+    if (data.imageUrl && data.imageUrl.trim()) {
+      await prisma.productImage.create({
+        data: {
+          menuItemId: menuItem.id,
+          url: data.imageUrl,
+          sortOrder: 0,
+          isPrimary: true,
+        },
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Menu item created successfully',
