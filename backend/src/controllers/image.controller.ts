@@ -138,21 +138,28 @@ export const getProductImages = async (req: Request, res: Response, next: NextFu
 export const deleteProductImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { imageId } = req.params;
+    console.log('🗑️  DELETE IMAGE REQUEST:', { imageId });
 
     const image = await prisma.productImage.findUnique({ where: { id: imageId } });
     if (!image) throw new AppError('Image not found', 404);
+    console.log('Found image:', { id: image.id, menuItemId: image.menuItemId, isPrimary: image.isPrimary });
 
     // Delete physical file
     const filePath = path.join(process.cwd(), 'public', image.url);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log('✓ Physical file deleted:', filePath);
+    }
 
     await prisma.productImage.delete({ where: { id: imageId } });
+    console.log('✓ Database record deleted');
 
     // Always sync menuItem.imageUrl with current primary or null
     const remaining = await prisma.productImage.findMany({
       where: { menuItemId: image.menuItemId },
       orderBy: { sortOrder: 'asc' },
     });
+    console.log('Remaining images:', remaining.length);
 
     if (remaining.length > 0) {
       // Set first remaining as primary if deleted was primary
@@ -161,6 +168,7 @@ export const deleteProductImage = async (req: Request, res: Response, next: Next
           where: { id: remaining[0].id },
           data: { isPrimary: true },
         });
+        console.log('✓ Set new primary:', remaining[0].id);
       }
       // Sync menuItem to current primary
       const primary = remaining.find(img => img.isPrimary) || remaining[0];
@@ -168,12 +176,14 @@ export const deleteProductImage = async (req: Request, res: Response, next: Next
         where: { id: image.menuItemId },
         data: { imageUrl: primary.url },
       });
+      console.log('✓ Updated menuItem.imageUrl to:', primary.url);
     } else {
       // No images left — clear menuItem.imageUrl
       await prisma.menuItem.update({
         where: { id: image.menuItemId },
         data: { imageUrl: null },
       });
+      console.log('✓ Cleared menuItem.imageUrl (no images remaining)');
     }
 
     res.json({ success: true, message: 'Image deleted' });

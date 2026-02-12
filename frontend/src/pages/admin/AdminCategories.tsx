@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 import ImageUploader from '../../components/ImageUploader';
+import { resolveImageUrl, getImagePlaceholder } from '../../utils/imageUtils';
 
 const BLANK = { name: '', nameEn: '', description: '', slug: '', imageUrl: '', sortOrder: 0, isActive: true };
 
@@ -109,10 +110,18 @@ export default function AdminCategories() {
                 <tr key={cat.id} className="hover:bg-gray-50 transition">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
-                      {cat.imageUrl
-                        ? <img src={cat.imageUrl} alt={cat.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={e=>(e.currentTarget.style.display='none')} />
-                        : <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl flex-shrink-0">📂</div>
-                      }
+                      {cat.imageUrl ? (
+                        <img 
+                          src={resolveImageUrl(cat.imageUrl) || getImagePlaceholder('category')} 
+                          alt={cat.name} 
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.src = getImagePlaceholder('category');
+                          }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl flex-shrink-0">📂</div>
+                      )}
                       <div>
                         <div className="font-semibold text-gray-800">{cat.name}</div>
                         {cat.nameEn && <div className="text-xs text-gray-400">{cat.nameEn}</div>}

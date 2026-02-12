@@ -66,15 +66,21 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middleware
-app.use(helmet()); // Security headers
-app.use(cors({
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+})); // Security headers with CORS resource policy
+
+// CORS configuration - define once, use everywhere
+const corsOptions = {
   origin: [
     'http://localhost:5173',
     'http://10.1.11.35:5173',
     'http://dockerhost.hpehellas-demo.com:5173',
   ],
   credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
@@ -105,21 +111,22 @@ app.use('/api/loyalty',  loyaltyRoutes);
 app.use('/api/staffhr',  staffhrRoutes);
 app.use('/api/images',   imageRoutes);
 
-// Serve uploaded images as static files
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')));
-app.use('/stock-images', express.static(path.join(process.cwd(), 'public', 'stock-images')));
+// Serve uploaded images as static files with CORS headers
+app.use('/uploads', cors(corsOptions), express.static(path.join(process.cwd(), 'public', 'uploads')));
+app.use('/stock-images', cors(corsOptions), express.static(path.join(process.cwd(), 'public', 'stock-images')));
 
 // Error handling
 app.use(notFound);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`
 🚀 Server is running on port ${PORT}
 📚 API Documentation: http://localhost:${PORT}/api-docs
 🏥 Health Check: http://localhost:${PORT}/health
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
+🌐 Network: Listening on all interfaces (0.0.0.0:${PORT})
   `);
 });
 

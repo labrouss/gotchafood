@@ -11,15 +11,27 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
   // Relative path — prepend backend base
   let apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
   
-  // If env is set to localhost but we're not on localhost, use current origin + port 3000
-  if (apiUrl.includes('localhost') && typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
-    const origin = window.location.origin; // http://dockerhost.hpehellas-demo.com:5173
-    const baseUrl = origin.replace(':5173', ':3000'); // Replace frontend port with backend port
-    return `${baseUrl}${url}`;
+  // Smart URL resolution based on current environment
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    console.log('🖼️ resolveImageUrl:', { url, hostname, protocol });
+    
+    // If we're NOT on localhost, construct backend URL from current hostname
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      const backendUrl = `${protocol}//${hostname}:3000`;
+      const resolved = `${backendUrl}${url}`;
+      console.log('   ✓ Resolved to:', resolved);
+      return resolved;
+    }
   }
   
-  const backendBase = apiUrl.replace('/api', ''); // http://localhost:3000
-  return `${backendBase}${url}`;
+  // Default: use env variable
+  const backendBase = apiUrl.replace('/api', '');
+  const resolved = `${backendBase}${url}`;
+  console.log('   ✓ Using env fallback:', resolved);
+  return resolved;
 }
 
 // Get a fallback placeholder if image fails or is missing

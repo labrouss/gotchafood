@@ -5,6 +5,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 import ImageUploader from '../../components/ImageUploader';
+import { resolveImageUrl, getImagePlaceholder } from '../../utils/imageUtils';
 
 const STATIONS = [
   { value: '',          label: '— None —',   icon: '' },
@@ -151,10 +152,18 @@ export default function AdminProducts() {
             <div key={product.id} className={`bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition flex flex-col ${!product.isAvailable ? 'opacity-60' : ''}`}>
 
               {/* image */}
-              {product.imageUrl
-                ? <img src={product.imageUrl} alt={product.name} className="w-full h-44 object-cover" />
-                : <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-5xl">🍽️</div>
-              }
+              {product.imageUrl ? (
+                <img 
+                  src={resolveImageUrl(product.imageUrl) || getImagePlaceholder('product')} 
+                  alt={product.name} 
+                  className="w-full h-44 object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = getImagePlaceholder('product');
+                  }}
+                />
+              ) : (
+                <div className="w-full h-44 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-5xl">🍽️</div>
+              )}
 
               <div className="p-4 flex flex-col flex-1">
                 {/* name + price */}
@@ -354,9 +363,14 @@ export default function AdminProducts() {
             </div>
             <div className="p-6">
               {deleteTarget.imageUrl && (
-                <img src={deleteTarget.imageUrl} alt={deleteTarget.name}
+                <img 
+                  src={resolveImageUrl(deleteTarget.imageUrl) || getImagePlaceholder('product')} 
+                  alt={deleteTarget.name}
                   className="w-full h-32 object-cover rounded-xl mb-4"
-                  onError={e => (e.currentTarget.style.display = 'none')} />
+                  onError={e => {
+                    e.currentTarget.src = getImagePlaceholder('product');
+                  }} 
+                />
               )}
               <p className="text-gray-600 text-sm mb-1">Are you sure you want to delete:</p>
               <p className="font-bold text-gray-900 text-lg mb-4">"{deleteTarget.name}"</p>

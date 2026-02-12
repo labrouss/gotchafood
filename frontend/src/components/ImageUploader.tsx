@@ -281,7 +281,15 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
                       ${dragIdx === idx ? 'opacity-40 scale-95' : 'hover:border-indigo-300'} transition-all`}
                     style={{ aspectRatio: '1' }}
                   >
-                    <img src={resolveImageUrl(img.url)} alt={`Image ${idx+1}`} className="w-full h-full object-cover" />
+                    <img 
+                      src={resolveImageUrl(img.url) || getImagePlaceholder('product')} 
+                      alt={`Image ${idx+1}`} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load image:', img.url, 'resolved to:', resolveImageUrl(img.url));
+                        e.currentTarget.src = getImagePlaceholder('product');
+                      }}
+                    />
                     {img.isPrimary && (
                       <div className="absolute top-1 left-1 bg-indigo-600 text-white text-xs px-1.5 py-0.5 rounded font-bold">★ Primary</div>
                     )}
@@ -379,7 +387,15 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
                       className="relative rounded-lg overflow-hidden border-2 border-gray-200 hover:border-indigo-500 transition group"
                       style={{ aspectRatio: String(aspectRatio) }}
                     >
-                      <img src={resolveImageUrl(img.url) || ''} alt={img.name} className="w-full h-full object-cover" />
+                      <img 
+                        src={resolveImageUrl(img.url) || getImagePlaceholder('product')} 
+                        alt={img.name} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.error('Failed to load stock image:', img.url);
+                          e.currentTarget.src = getImagePlaceholder('product');
+                        }}
+                      />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center">
                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-bold bg-indigo-600 px-2 py-1 rounded">
                           Select
@@ -395,7 +411,15 @@ export default function ImageUploader({ value, onChange, productId, gallery, onG
           {/* current preview */}
           {currentUrl && (
             <div className="relative rounded-xl overflow-hidden border group" style={{ aspectRatio: String(aspectRatio) }}>
-              <img src={resolveImageUrl(currentUrl)} alt="preview" className="w-full h-full object-cover" />
+              <img 
+                src={resolveImageUrl(currentUrl) || getImagePlaceholder('product')} 
+                alt="preview" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('Failed to load preview image:', currentUrl, 'resolved to:', resolveImageUrl(currentUrl));
+                  e.currentTarget.src = getImagePlaceholder('product');
+                }}
+              />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
                 <button type="button" onClick={() => { handleFileChosen(new File([], '')); fileInputRef.current?.click(); }}
                   className="px-3 py-1.5 bg-white text-gray-800 rounded-lg text-xs font-bold">✏️ Replace</button>
