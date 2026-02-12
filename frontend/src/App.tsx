@@ -19,6 +19,7 @@ import StaffManagement from './pages/admin/StaffManagement';
 import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
 import InsightsPage from './pages/admin/InsightsPage';
+import CounterPOS from './pages/counter/CounterPOS';
 import StaffHR from './pages/admin/StaffHR';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 import CreateReview from './pages/reviews/CreateReview';
@@ -84,6 +85,9 @@ function App() {
                         </Link>
                         <Link to="/admin/kitchen" className="block px-4 py-2 hover:bg-gray-100">
                           🍳 Kitchen Display
+                        </Link>
+                        <Link to="/counter" className="block px-4 py-2 hover:bg-gray-100">
+                          🛒 Counter POS
                         </Link>
                         <Link to="/delivery" className="block px-4 py-2 hover:bg-gray-100">
                           🚗 Delivery
@@ -197,6 +201,7 @@ function App() {
             
             {/* Delivery Route */}
             <Route path="/delivery" element={<DeliveryDashboard />} />
+            <Route path="/counter" element={<CounterPOS />} />
             
             {/* Review Routes */}
             <Route path="/review" element={<CreateReview />} />

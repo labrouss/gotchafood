@@ -339,3 +339,32 @@ export const imageAPI = {
     return r.data;
   },
 };
+
+// ── Pack 5: Settings, Loyalty Tiers, Counter ─────────────────────────────
+export const settingsAPI = {
+  getAll: async () => api.get('/settings'),
+  getOne: async (key: string) => api.get(`/settings/${key}`),
+  update: async (key: string, value: any) => api.put(`/settings/${key}`, { value }),
+  bulkUpdate: async (settings: { key: string; value: any }[]) => api.post('/settings/bulk', { settings }),
+  initialize: async () => api.post('/settings/initialize'),
+};
+
+export const loyaltyTiersAPI = {
+  getAll: async () => api.get('/loyalty-tiers'),
+  create: async (data: any) => api.post('/loyalty-tiers', data),
+  update: async (id: string, data: any) => api.put(`/loyalty-tiers/${id}`, data),
+  delete: async (id: string) => api.delete(`/loyalty-tiers/${id}`),
+  initialize: async () => api.post('/loyalty-tiers/initialize'),
+};
+
+export const counterAPI = {
+  getAll: async (status?: string, date?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (date) params.append('date', date);
+    return api.get(`/counter?${params}`);
+  },
+  create: async (data: any) => api.post('/counter', data),
+  updateStatus: async (id: string, status: string) => api.put(`/counter/${id}/status`, { status }),
+  getStats: async () => api.get('/counter/stats'),
+};

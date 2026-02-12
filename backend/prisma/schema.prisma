@@ -41,6 +41,10 @@ model User {
   itemsAssigned      OrderItem[] @relation("ItemAssignedTo")
   itemsCompleted     OrderItem[] @relation("ItemCompletedBy")
   staffProfile       StaffProfile?
+  
+  // Counter/Waiter orders (Pack 5)
+  counterOrders      Order[]     @relation("CounterStaff")
+  waiterOrders       Order[]     @relation("Waiter")
 
   @@map("users")
 }
@@ -126,12 +130,21 @@ model ProductImage {
 model Order {
   id                 String      @id @default(uuid())
   userId             String      @map("user_id")
-  addressId          String      @map("address_id")
+  addressId          String?     @map("address_id")  // Optional for counter/waiter orders
   orderNumber        String      @unique @map("order_number")
+  orderType          OrderType   @default(DELIVERY) @map("order_type")
+  orderSource        String      @default("web") @map("order_source") // web, counter, waiter, kiosk, mobile
+  tableNumber        String?     @map("table_number")
+  counterStaffId     String?     @map("counter_staff_id")
+  waiterId           String?     @map("waiter_id")
+  loyaltyPhone       String?     @map("loyalty_phone")
+  paymentMethod      String?     @map("payment_method")
+  isPaid             Boolean     @default(false) @map("is_paid")
   status             OrderStatus @default(PENDING)
   subtotal           Decimal     @db.Decimal(10, 2)
   deliveryFee        Decimal     @default(0) @map("delivery_fee") @db.Decimal(10, 2)
   totalAmount        Decimal     @map("total_amount") @db.Decimal(10, 2)
+  pointsEarned       Int         @default(0) @map("points_earned")
   notes              String?     @db.Text
   deliveryTime       DateTime?   @map("delivery_time")
   completedAt        DateTime?   @map("completed_at")
@@ -154,7 +167,7 @@ model Order {
   updatedAt          DateTime    @updatedAt @map("updated_at")
 
   user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  address            Address               @relation(fields: [addressId], references: [id])
+  address            Address?              @relation(fields: [addressId], references: [id])
   items              OrderItem[]
   payment            Payment?
   reviews            Review[]
@@ -163,6 +176,8 @@ model Order {
   // Staff tracking relations
   confirmedByUser    User?                 @relation("ConfirmedBy", fields: [confirmedBy], references: [id])
   deliveredByUser    User?                 @relation("DeliveredBy", fields: [deliveredBy], references: [id])
+  counterStaff       User?                 @relation("CounterStaff", fields: [counterStaffId], references: [id])
+  waiter             User?                 @relation("Waiter", fields: [waiterId], references: [id])
 
   @@map("orders")
 }
@@ -174,6 +189,13 @@ enum OrderStatus {
   OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
+}
+
+enum OrderType {
+  DELIVERY
+  COUNTER
+  WAITER
+  DINE_IN
 }
 
 model OrderItem {
@@ -312,3 +334,36 @@ model WorkShift {
 
   @@map("work_shifts")
 }
+
+// ── Enhancement Pack 5: Store Settings & Loyalty Tiers ──────────────────────
+
+model StoreSettings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   @db.Text
+  category  String   // 'loyalty', 'theme', 'general'
+  label     String
+  dataType  String   // 'string', 'number', 'boolean', 'json'
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("store_settings")
+}
+
+model LoyaltyTier {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  minPoints      Int      @map("min_points")
+  maxPoints      Int?     @map("max_points")
+  color          String   @default("#6b7280")
+  icon           String   @default("🏆")
+  discount       Int      @default(0) // percentage discount
+  pointsMultiplier Float  @default(1.0) @map("points_multiplier")
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("loyalty_tiers")
+}
+

@@ -1,0 +1,31 @@
+// Add these to your existing schema.prisma
+
+// Update Order model - add these fields:
+model Order {
+  // ... existing fields ...
+  
+  // Pack 5 additions:
+  orderSource      OrderSource  @default(ESHOP) @map("order_source")
+  counterStaffId   String?      @map("counter_staff_id")
+  loyaltyPhone     String?      @map("loyalty_phone")
+  paymentMethod    String?      @map("payment_method")
+  
+  counterStaff     User?        @relation("CounterStaff", fields: [counterStaffId], references: [id], onDelete: SetNull)
+  
+  @@index([orderSource])
+  @@index([counterStaffId])
+  // ... rest of model ...
+}
+
+enum OrderSource {
+  ESHOP
+  COUNTER
+  WAITER
+}
+
+// Add to User model relations:
+model User {
+  // ... existing relations ...
+  counterOrders    Order[]      @relation("CounterStaff")
+  // ... rest of model ...
+}
