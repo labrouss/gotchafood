@@ -4,21 +4,28 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { useState, useEffect } from 'react';
+import { useTheme } from '../../context/ThemeContext'; // Import ThemeContext
 
 export default function LoyaltyCard() {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuthStore();
+  const { storeName } = useTheme(); // Get storeName
   const [qrDataUrl, setQrDataUrl] = useState('');
 
-  const { data: rewardData } = useQuery({
-    queryKey: ['loyalty'],
-    queryFn: loyaltyAPI.getMyReward,
+  const { data: rewardData, isLoading } = useQuery({
+    queryKey: ['my-loyalty'],
+    queryFn: loyaltyAPI.getMyLoyalty,
     enabled: !!user && user.role === 'CUSTOMER',
   });
 
   useEffect(() => {
+    if (!user || user.role !== 'CUSTOMER') {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
     if (user?.phone) {
-      // Generate QR code with just the phone number
       QRCode.toDataURL(user.phone, {
         width: 300,
         margin: 2,
@@ -32,21 +39,16 @@ export default function LoyaltyCard() {
     }
   }, [user?.phone]);
 
-  if (!user || user.role !== 'CUSTOMER') {
-    navigate('/');
-    return null;
-  }
-
-  const reward = rewardData?.data?.reward;
+  const reward = rewardData?.data?.loyalty;
   const transactions = rewardData?.data?.transactions || [];
 
   // Determine tier info
   const getTierInfo = (tier: string) => {
     const tiers: any = {
-      bronze: { name: 'Bronze', color: '#cd7f32', icon: '🥉', min: 0, max: 499 },
-      silver: { name: 'Silver', color: '#c0c0c0', icon: '🥈', min: 500, max: 1499 },
-      gold: { name: 'Gold', color: '#ffd700', icon: '🥇', min: 1500, max: 2999 },
-      platinum: { name: 'Platinum', color: '#e5e4e2', icon: '💎', min: 3000, max: null },
+      bronze: { name: 'Bronze', color: '#cd7f32', icon: '🥉' },
+      silver: { name: 'Silver', color: '#c0c0c0', icon: '🥈' },
+      gold: { name: 'Gold', color: '#ffd700', icon: '🥇' },
+      platinum: { name: 'Platinum', color: '#e5e4e2', icon: '💎' },
     };
     return tiers[tier.toLowerCase()] || tiers.bronze;
   };
@@ -55,16 +57,117 @@ export default function LoyaltyCard() {
   const points = reward?.points || 0;
   const lifetimePoints = reward?.lifetimePoints || 0;
 
-  // Calculate progress to next tier
+  // Calculate progress to next tier based on lifetime points
+  // Thresholds must match LoyaltyPage.tsx:
+  // Bronze: 0-99 (Next: 100)
+  // Silver: 100-199 (Next: 200)
+  // Gold: 200-499 (Next: 500)
+  // Platinum: 500+
   const getNextTier = () => {
-    if (points < 500) return { name: 'Silver', needed: 500 - points, total: 500 };
-    if (points < 1500) return { name: 'Gold', needed: 1500 - points, total: 1500 };
-    if (points < 3000) return { name: 'Platinum', needed: 3000 - points, total: 3000 };
+    if (lifetimePoints < 100) return { name: 'Silver', needed: 100 - lifetimePoints, total: 100 };
+    if (lifetimePoints < 200) return { name: 'Gold', needed: 200 - lifetimePoints, total: 200 };
+    if (lifetimePoints < 500) return { name: 'Platinum', needed: 500 - lifetimePoints, total: 500 };
     return null;
   };
 
   const nextTier = getNextTier();
-  const progress = nextTier ? ((points / nextTier.total) * 100) : 100;
+  // Progress is percentage of the way to the next tier total
+  const progress = nextTier ? Math.min((lifetimePoints / nextTier.total) * 100, 100) : 100;
+
+  const handleDownloadCard = () => {
+    if (!qrDataUrl || !user) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Card dimensions
+    const width = 600;
+    const height = 900;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background gradient based on tier
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    if (tierInfo.name === 'Bronze') {
+      gradient.addColorStop(0, '#cd7f32');
+      gradient.addColorStop(1, '#a05a2c');
+    } else if (tierInfo.name === 'Silver') {
+      gradient.addColorStop(0, '#c0c0c0');
+      gradient.addColorStop(1, '#808080');
+    } else if (tierInfo.name === 'Gold') {
+      gradient.addColorStop(0, '#ffd700');
+      gradient.addColorStop(1, '#b8860b');
+    } else {
+      gradient.addColorStop(0, '#e5e4e2');
+      gradient.addColorStop(1, '#a9a9a9');
+    }
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Header (Store Name)
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 40px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(storeName || 'Loyalty Card', width / 2, 80);
+
+    // Tier Badge
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.beginPath();
+    ctx.roundRect(width / 2 - 100, 110, 200, 50, 25);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`${tierInfo.name} Member`, width / 2, 143);
+
+    // QR Code Background
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(width / 2 - 160, 200, 320, 320, 20);
+    ctx.fill();
+
+    // Draw QR Code
+    const qrImage = new Image();
+    qrImage.onload = () => {
+      ctx.drawImage(qrImage, width / 2 - 140, 220, 280, 280);
+
+      // User Info
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.fillText(`${user.firstName} ${user.lastName}`, width / 2, 600);
+
+      ctx.font = '24px monospace';
+      ctx.fillText(user.phone || '', width / 2, 640);
+
+      // Points
+      ctx.font = 'bold 80px sans-serif';
+      ctx.fillText(`${points}`, width / 2, 750);
+      ctx.font = '24px sans-serif';
+      ctx.fillText('Available Points', width / 2, 790);
+
+      // Footer
+      ctx.font = 'italic 20px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillText(`Scanned at ${storeName}`, width / 2, 860);
+
+      // Trigger Download
+      const link = document.createElement('a');
+      link.download = `${storeName.replace(/\s+/g, '_')}_LoyaltyCard.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    qrImage.src = qrDataUrl;
+  };
+
+  if (!user || user.role !== 'CUSTOMER') return null;
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -72,7 +175,7 @@ export default function LoyaltyCard() {
 
       {/* Loyalty Card */}
       <div className="max-w-md mx-auto mb-8">
-        <div 
+        <div
           className="rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${tierInfo.color} 0%, ${tierInfo.color}dd 100%)` }}
         >
@@ -110,7 +213,7 @@ export default function LoyaltyCard() {
                   <span>{Math.round(progress)}%</span>
                 </div>
                 <div className="w-full bg-white/30 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-white rounded-full h-2 transition-all duration-500"
                     style={{ width: `${progress}%` }}
                   />
@@ -124,57 +227,87 @@ export default function LoyaltyCard() {
       {/* QR Code for Scanning */}
       <div className="max-w-md mx-auto mb-8">
         <div className="bg-white rounded-xl shadow-md p-6 text-center">
-          <h2 className="text-xl font-bold mb-2">📷 Scan to Earn Points</h2>
-          <p className="text-gray-600 text-sm mb-4">Show this QR code at the counter</p>
-          
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-gray-800">{storeName}</h2>
+            <div className="text-sm text-gray-500 uppercase tracking-widest font-semibold mt-1">Member Card</div>
+          </div>
+
+          <h2 className="text-xl font-bold mb-2 sr-only">Scan to Earn</h2>
+
           {qrDataUrl ? (
-            <div className="inline-block p-4 bg-white border-4 border-gray-200 rounded-xl">
+            <div className="inline-block p-4 bg-white border-4 border-gray-200 rounded-xl mb-4">
               <img src={qrDataUrl} alt="Loyalty QR Code" className="w-64 h-64" />
             </div>
           ) : (
-            <div className="w-64 h-64 bg-gray-100 rounded-xl flex items-center justify-center mx-auto">
+            <div className="w-64 h-64 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
               <div className="text-gray-400">Loading QR...</div>
             </div>
           )}
 
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <div className="mt-2 p-3 bg-gray-50 rounded-lg mb-4">
             <div className="text-xs text-gray-500 mb-1">Your Phone Number</div>
             <div className="font-mono text-lg font-bold">{user.phone}</div>
           </div>
+
+          <button
+            onClick={handleDownloadCard}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-3 rounded-xl hover:bg-gray-800 transition font-semibold"
+          >
+            <span>📥</span>
+            Save to Phone / Gallery
+          </button>
+          <p className="text-xs text-gray-500 mt-2">
+            Save this image to use as your digital wallet card
+          </p>
         </div>
       </div>
 
       {/* Recent Transactions */}
-      <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold mb-4">📜 Recent Activity</h2>
-        
-        {transactions.length > 0 ? (
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            {transactions.slice(0, 10).map((tx: any) => (
-              <div key={tx.id} className="border-b last:border-b-0 p-4 hover:bg-gray-50 transition">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-semibold">
-                      {tx.type === 'EARN' ? '✅' : '❌'} {tx.reason}
+      <div className="max-w-md mx-auto">
+        <h2 className="text-xl font-bold mb-4">📜 Recent Activity</h2>
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          {transactions.length > 0 ? (
+            <div className="divide-y divide-gray-100">
+              {transactions.map((tx: any) => {
+                const isPositive = ['earned', 'milestone', 'bonus', 'redeemed_reversal'].includes(tx.type?.toLowerCase());
+                // redeemed is negative
+                const isNegative = ['redeemed'].includes(tx.type?.toLowerCase());
+
+                // If it's not explicitly negative, treat as positive for display if points > 0
+                // or trust the type list. Best to match LoyaltyPage logic.
+                // LoyaltyPage logic: points > 0 ? green : red
+                const isGain = tx.points > 0;
+
+                return (
+                  <div key={tx.id} className="p-4 flex justify-between items-center hover:bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" role="img" aria-label={tx.type}>
+                        {tx.type === 'earned' ? '🛍️' :
+                          tx.type === 'milestone' ? '🏆' :
+                            tx.type === 'redeemed' ? '🎁' : '💰'}
+                      </span>
+                      <div>
+                        <div className="font-semibold text-gray-800">{tx.reason}</div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(tx.createdAt).toLocaleDateString()}
+                          {', '}
+                          {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {new Date(tx.createdAt).toLocaleString()}
+                    <div className={`font-bold ${isGain ? 'text-green-600' : 'text-red-600'}`}>
+                      {isGain ? '+' : ''}{tx.points}
                     </div>
                   </div>
-                  <div className={`text-lg font-bold ${tx.type === 'EARN' ? 'text-green-600' : 'text-red-600'}`}>
-                    {tx.type === 'EARN' ? '+' : '-'}{Math.abs(tx.points)}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-md p-12 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h3 className="text-xl font-bold mb-2">Start Earning Points!</h3>
-            <p className="text-gray-600">Make your first order to start collecting loyalty points</p>
-          </div>
-        )}
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              No recent transactions
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
