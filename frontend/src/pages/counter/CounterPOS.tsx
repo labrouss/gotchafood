@@ -4,6 +4,7 @@ import { counterAPI, menuAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import QRScanner from '../../components/QRScanner';
 
 export default function CounterPOS() {
   const navigate = useNavigate();
@@ -237,18 +238,26 @@ export default function CounterPOS() {
                 className="flex-1 border rounded-lg px-3 py-2 text-sm"
               />
               <button
+                type="button"
                 onClick={() => setShowQRScanner(!showQRScanner)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold"
               >
-                📷
+                📷 Scan
               </button>
             </div>
-            {showQRScanner && (
-              <div className="mt-2 p-3 bg-gray-50 rounded text-sm text-gray-600">
-                QR Scanner placeholder - Use camera to scan customer's loyalty QR code
-              </div>
-            )}
           </div>
+
+          {/* QR Scanner Modal */}
+          {showQRScanner && (
+            <QRScanner
+              onScan={(data) => {
+                setLoyaltyPhone(data);
+                setShowQRScanner(false);
+                addToast('QR code scanned successfully!');
+              }}
+              onClose={() => setShowQRScanner(false)}
+            />
+          )}
 
           {/* Cart Items */}
           <div className="mb-4 max-h-64 overflow-y-auto">

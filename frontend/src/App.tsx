@@ -20,6 +20,9 @@ import KitchenDisplayPage from './pages/admin/KitchenDisplayPage';
 import EnhancedDashboard from './pages/admin/EnhancedDashboard';
 import InsightsPage from './pages/admin/InsightsPage';
 import CounterPOS from './pages/counter/CounterPOS';
+import StoreSettings from './pages/admin/StoreSettings';
+import LoyaltyTiers from './pages/admin/LoyaltyTiers';
+import LoyaltyCard from './pages/customer/LoyaltyCard';
 import StaffHR from './pages/admin/StaffHR';
 import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 import CreateReview from './pages/reviews/CreateReview';
@@ -111,8 +114,15 @@ function App() {
                         <Link to="/admin/staff-hr" className="block px-4 py-2 hover:bg-gray-100">
                           👥 Staff HR
                         </Link>
-                        <Link to="/admin/staff" className="block px-4 py-2 hover:bg-gray-100 rounded-b-lg">
+                        <Link to="/admin/staff" className="block px-4 py-2 hover:bg-gray-100">
                           👥 Staff
+                        </Link>
+                        <div className="border-t border-gray-200"></div>
+                        <Link to="/admin/settings" className="block px-4 py-2 hover:bg-gray-100">
+                          ⚙️ Store Settings
+                        </Link>
+                        <Link to="/admin/loyalty-tiers" className="block px-4 py-2 hover:bg-gray-100 rounded-b-lg">
+                          🏆 Loyalty Tiers
                         </Link>
                       </div>
                     </div>
@@ -135,6 +145,9 @@ function App() {
                             📍 Οι Διευθύνσεις μου
                           </Link>
                           <div className="border-t border-gray-200"></div>
+                          <Link to="/loyalty-card" className="block px-4 py-3 hover:bg-gray-100">
+                            💳 Loyalty Card
+                          </Link>
                           <Link to="/loyalty" className="block px-4 py-3 hover:bg-gray-100">
                             🎁 Loyalty Rewards
                           </Link>
@@ -185,12 +198,15 @@ function App() {
             <Route path="/my-orders" element={<MyOrdersPage />} />
             <Route path="/my-addresses" element={<MyAddressesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/loyalty-card" element={<LoyaltyCard />} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<Navigate to="/admin/insights" replace />} />
             <Route path="/admin/analytics" element={<EnhancedDashboard />} />
             <Route path="/admin/insights"  element={<InsightsPage />} />
             <Route path="/admin/staff-hr"   element={<StaffHR />} />
+            <Route path="/admin/settings"   element={<StoreSettings />} />
+            <Route path="/admin/loyalty-tiers" element={<LoyaltyTiers />} />
             <Route path="/admin/categories" element={<AdminCategories />} />
             <Route path="/admin/products" element={<AdminProducts />} />
             <Route path="/admin/orders" element={<AdminOrders />} />
