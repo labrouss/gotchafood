@@ -4,6 +4,7 @@ import {
   createCounterOrder,
   getAllOrders,
   getCounterStats,
+  updateCounterOrderStatus,
 } from '../controllers/counter.controller';
 
 const router = Router();
@@ -15,5 +16,6 @@ router.use(authorize('ADMIN', 'STAFF'));
 router.get('/', getAllOrders);
 router.post('/', createCounterOrder);
 router.get('/stats', getCounterStats);
+router.put('/:id/status', updateCounterOrderStatus);
 
 export default router;

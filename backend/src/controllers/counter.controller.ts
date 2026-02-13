@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 const generateOrderNumber = async (prefix: string = 'CO'): Promise<string> => {
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const count = await prisma.order.count({
-    where: { 
+    where: {
       orderNumber: { startsWith: `${prefix}-${today}` },
       orderSource: prefix === 'CO' ? 'counter' : 'waiter'
     },
@@ -167,18 +167,18 @@ export const getCounterStats = async (req: Request, res: Response, next: NextFun
     today.setHours(0, 0, 0, 0);
 
     const [todayOrders, todayRevenue, preparingCount, readyCount] = await Promise.all([
-      prisma.order.count({ 
-        where: { placedAt: { gte: today }, orderSource: { in: ['counter', 'waiter'] } } 
+      prisma.order.count({
+        where: { placedAt: { gte: today }, orderSource: { in: ['counter', 'waiter'] } }
       }),
       prisma.order.aggregate({
         where: { placedAt: { gte: today }, isPaid: true, orderSource: { in: ['counter', 'waiter'] } },
         _sum: { totalAmount: true },
       }),
-      prisma.order.count({ 
-        where: { status: { in: ['CONFIRMED', 'PREPARING'] }, orderSource: { in: ['counter', 'waiter'] } } 
+      prisma.order.count({
+        where: { status: { in: ['CONFIRMED', 'PREPARING'] }, orderSource: { in: ['counter', 'waiter'] } }
       }),
-      prisma.order.count({ 
-        where: { status: 'OUT_FOR_DELIVERY', orderSource: { in: ['counter', 'waiter'] } } 
+      prisma.order.count({
+        where: { status: 'OUT_FOR_DELIVERY', orderSource: { in: ['counter', 'waiter'] } }
       }),
     ]);
 
@@ -195,3 +195,110 @@ export const getCounterStats = async (req: Request, res: Response, next: NextFun
     next(error);
   }
 };
+
+// ── Update order status ───────────────────────────────────────────────────
+export const updateCounterOrderStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const schema = z.object({
+      status: z.enum(['PENDING', 'CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED']),
+    });
+    const { status } = schema.parse(req.body);
+    const userId = (req as any).user.id;
+
+    const timestampUpdates: any = { status, updatedAt: new Date() };
+
+    switch (status) {
+      case 'CONFIRMED':
+        timestampUpdates.confirmedAt = new Date();
+        if (userId) timestampUpdates.confirmedBy = userId;
+        break;
+      case 'PREPARING':
+        timestampUpdates.preparingAt = new Date();
+        if (userId) timestampUpdates.preparingBy = userId;
+        break;
+      case 'OUT_FOR_DELIVERY':
+        timestampUpdates.readyAt = new Date();
+        if (userId) timestampUpdates.readyBy = userId;
+        timestampUpdates.outForDeliveryAt = new Date();
+        if (userId) timestampUpdates.outForDeliveryBy = userId;
+        break;
+      case 'DELIVERED':
+        timestampUpdates.deliveredAt = new Date();
+        if (userId) timestampUpdates.deliveredBy = userId;
+        timestampUpdates.completedAt = new Date();
+        await awardLoyaltyPoints(id);
+        break;
+      case 'CANCELLED':
+        timestampUpdates.cancelledAt = new Date();
+        break;
+    }
+
+    const order = await prisma.order.update({
+      where: { id },
+      data: timestampUpdates,
+      include: {
+        items: { include: { menuItem: true } },
+      },
+    });
+
+    res.json({ success: true, data: { order } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Helper function to award loyalty points
+async function awardLoyaltyPoints(orderId: string) {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true, totalAmount: true, orderNumber: true },
+    });
+
+    if (!order || !order.userId) return;
+
+    // 1 point per €1 spent
+    const points = Math.floor(Number(order.totalAmount));
+
+    const loyalty = await prisma.loyaltyReward.upsert({
+      where: { userId: order.userId },
+      update: {
+        points: { increment: points },
+        lifetimePoints: { increment: points },
+      },
+      create: {
+        userId: order.userId,
+        points,
+        lifetimePoints: points,
+      },
+    });
+
+    await prisma.rewardTransaction.create({
+      data: {
+        userId: order.userId,
+        orderId,
+        points,
+        type: 'earned',
+        reason: `Order #${order.orderNumber}`,
+      },
+    });
+
+    // Check for tier upgrade
+    let newTier = loyalty.tier;
+    const totalPoints = loyalty.lifetimePoints + points;
+
+    if (totalPoints >= 500) newTier = 'platinum';
+    else if (totalPoints >= 200) newTier = 'gold';
+    else if (totalPoints >= 100) newTier = 'silver';
+
+    if (newTier !== loyalty.tier) {
+      await prisma.loyaltyReward.update({
+        where: { userId: order.userId },
+        data: { tier: newTier },
+      });
+    }
+  } catch (error) {
+    console.error('Error awarding loyalty points:', error);
+  }
+}
