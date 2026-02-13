@@ -113,6 +113,7 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
             subtotal: item.price * item.quantity,
           })),
         },
+        orderType: data.orderSource === 'waiter' ? 'WAITER' : 'COUNTER', // Explicitly set order type
       },
       include: {
         user: { select: { id: true, firstName: true, lastName: true, phone: true } },

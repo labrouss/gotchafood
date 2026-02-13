@@ -4,13 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore } from '../components/ToastContainer';
+import { resolveImageUrl, getImagePlaceholder } from '../utils/imageUtils';
 
 export default function HomePage() {
   const navigate = useNavigate();
   const cart = useCartStore();
   const user = useAuthStore((state) => state.user);
   const addToast = useToastStore((state) => state.addToast);
-  
+
   const { data: popularItems, isLoading } = useQuery({
     queryKey: ['popularItems'],
     queryFn: menuAPI.getPopular,
@@ -83,7 +84,7 @@ export default function HomePage() {
             placeholder="Διεύθυνση"
             className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent md:col-span-2"
           />
-          <button 
+          <button
             type="submit"
             className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition"
           >
@@ -97,7 +98,7 @@ export default function HomePage() {
         <h2 className="text-3xl font-bold mb-6 text-gray-800">
           Top 5 Δημοφιλείς Παραγγελίες
         </h2>
-        
+
         {isLoading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
@@ -109,9 +110,22 @@ export default function HomePage() {
                 key={item.id}
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition transform hover:-translate-y-1"
               >
-                <div className="h-48 bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
-                  <span className="text-6xl">🍽️</span>
-                </div>
+                {item.imageUrl ? (
+                  <div className="h-48 relative overflow-hidden bg-gray-100">
+                    <img
+                      src={resolveImageUrl(item.imageUrl) || getImagePlaceholder('product')}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = getImagePlaceholder('product');
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-48 bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
+                    <span className="text-6xl">🍽️</span>
+                  </div>
+                )}
                 <div className="p-6">
                   <h3 className="font-bold text-xl mb-2 text-gray-800">
                     {item.name}
@@ -123,7 +137,7 @@ export default function HomePage() {
                     <span className="text-2xl font-bold text-red-600">
                       €{parseFloat(item.price).toFixed(2)}
                     </span>
-                    <button 
+                    <button
                       onClick={() => handleAddToCart(item)}
                       className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition"
                     >

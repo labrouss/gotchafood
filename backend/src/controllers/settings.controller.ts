@@ -12,6 +12,8 @@ export const getAllSettings = async (req: Request, res: Response, next: NextFunc
       orderBy: [{ category: 'asc' }, { label: 'asc' }],
     });
 
+    console.log(`[DEBUG] getAllSettings: Found ${settings.length} settings.`);
+
     // Group by category
     const grouped = settings.reduce((acc: any, setting) => {
       if (!acc[setting.category]) acc[setting.category] = [];
@@ -21,6 +23,7 @@ export const getAllSettings = async (req: Request, res: Response, next: NextFunc
 
     res.json({ success: true, data: { settings, grouped } });
   } catch (error) {
+    console.error('[DEBUG] getAllSettings Error:', error);
     next(error);
   }
 };
@@ -30,7 +33,7 @@ export const getSetting = async (req: Request, res: Response, next: NextFunction
   try {
     const { key } = req.params;
     const setting = await prisma.storeSettings.findUnique({ where: { key } });
-    
+
     if (!setting) throw new AppError('Setting not found', 404);
 
     // Parse value based on dataType
@@ -107,17 +110,18 @@ export const bulkUpdateSettings = async (req: Request, res: Response, next: Next
 // ── Initialize default settings (run once or on-demand) ───────────────────
 export const initializeDefaults = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('[DEBUG] initializeDefaults: Starting initialization...');
     const defaults = [
       // Loyalty settings
       { key: 'loyalty.min_order_for_points', value: '10', category: 'loyalty', label: 'Minimum Order for Points (€)', dataType: 'number' },
       { key: 'loyalty.points_per_euro', value: '10', category: 'loyalty', label: 'Points per Euro Spent', dataType: 'number' },
       { key: 'loyalty.enabled', value: 'true', category: 'loyalty', label: 'Loyalty Program Enabled', dataType: 'boolean' },
-      
+
       // Theme settings
       { key: 'theme.primary_color', value: '#dc2626', category: 'theme', label: 'Primary Color', dataType: 'string' },
       { key: 'theme.logo_url', value: '', category: 'theme', label: 'Logo URL', dataType: 'string' },
       { key: 'theme.store_name', value: 'Greek Food Ordering', category: 'theme', label: 'Store Name', dataType: 'string' },
-      
+
       // General settings
       { key: 'general.currency', value: '€', category: 'general', label: 'Currency Symbol', dataType: 'string' },
       { key: 'general.tax_rate', value: '24', category: 'general', label: 'Tax Rate (%)', dataType: 'number' },
@@ -128,13 +132,19 @@ export const initializeDefaults = async (req: Request, res: Response, next: Next
     for (const setting of defaults) {
       const existing = await prisma.storeSettings.findUnique({ where: { key: setting.key } });
       if (!existing) {
+        console.log(`[DEBUG] Creating setting: ${setting.key}`);
         const newSetting = await prisma.storeSettings.create({ data: setting });
         created.push(newSetting);
+      } else {
+        console.log(`[DEBUG] Setting already exists: ${setting.key}`);
       }
     }
 
+    console.log(`[DEBUG] initializeDefaults: Created ${created.length} new settings.`);
+
     res.json({ success: true, data: { created: created.length, message: `${created.length} default settings initialized` } });
   } catch (error) {
+    console.error('[DEBUG] initializeDefaults Error:', error);
     next(error);
   }
 };

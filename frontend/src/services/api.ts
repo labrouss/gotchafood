@@ -116,7 +116,7 @@ export const adminAPI = {
     const response = await api.get('/admin/dashboard');
     return response.data;
   },
-  
+
   // Categories
   getCategories: async () => {
     const response = await api.get('/admin/categories');
@@ -134,7 +134,7 @@ export const adminAPI = {
     const response = await api.delete(`/admin/categories/${id}`);
     return response.data;
   },
-  
+
   // Menu Items
   createMenuItem: async (data: any) => {
     const response = await api.post('/admin/menu', data);
@@ -148,7 +148,7 @@ export const adminAPI = {
     const response = await api.delete(`/admin/menu/${id}`);
     return response.data;
   },
-  
+
   // Orders
   getOrders: async (status?: string) => {
     const response = await api.get('/admin/orders', {
@@ -161,7 +161,7 @@ export const adminAPI = {
     return response.data;
   },
   updateOrderStatus: async (id: string, status: string, additionalTime?: number) => {
-    const response = await api.patch(`/admin/orders/${id}/status`, { 
+    const response = await api.patch(`/admin/orders/${id}/status`, {
       status,
       ...(additionalTime !== undefined && { additionalTime })
     });
@@ -175,7 +175,7 @@ export const adminAPI = {
     const response = await api.post(`/admin/orders/${id}/cancel`, { reason });
     return response.data;
   },
-  
+
   // Customers
   getCustomers: async () => {
     const response = await api.get('/admin/customers');
@@ -341,20 +341,51 @@ export const imageAPI = {
 };
 
 // ── Pack 5: Settings, Loyalty Tiers, Counter ─────────────────────────────
+// ── Pack 5: Settings, Loyalty Tiers, Counter ─────────────────────────────
 export const settingsAPI = {
-  getAll: async () => api.get('/settings'),
-  getOne: async (key: string) => api.get(`/settings/${key}`),
-  update: async (key: string, value: any) => api.put(`/settings/${key}`, { value }),
-  bulkUpdate: async (settings: { key: string; value: any }[]) => api.post('/settings/bulk', { settings }),
-  initialize: async () => api.post('/settings/initialize'),
+  getAll: async () => {
+    const response = await api.get('/settings');
+    return response.data;
+  },
+  getOne: async (key: string) => {
+    const response = await api.get(`/settings/${key}`);
+    return response.data;
+  },
+  update: async (key: string, value: any) => {
+    const response = await api.put(`/settings/${key}`, { value });
+    return response.data;
+  },
+  bulkUpdate: async (settings: { key: string; value: any }[]) => {
+    const response = await api.post('/settings/bulk', { settings });
+    return response.data;
+  },
+  initialize: async () => {
+    const response = await api.post('/settings/initialize');
+    return response.data;
+  },
 };
 
 export const loyaltyTiersAPI = {
-  getAll: async () => api.get('/loyalty-tiers'),
-  create: async (data: any) => api.post('/loyalty-tiers', data),
-  update: async (id: string, data: any) => api.put(`/loyalty-tiers/${id}`, data),
-  delete: async (id: string) => api.delete(`/loyalty-tiers/${id}`),
-  initialize: async () => api.post('/loyalty-tiers/initialize'),
+  getAll: async () => {
+    const response = await api.get('/loyalty-tiers');
+    return response.data;
+  },
+  create: async (data: any) => {
+    const response = await api.post('/loyalty-tiers', data);
+    return response.data;
+  },
+  update: async (id: string, data: any) => {
+    const response = await api.put(`/loyalty-tiers/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string) => {
+    const response = await api.delete(`/loyalty-tiers/${id}`);
+    return response.data;
+  },
+  initialize: async () => {
+    const response = await api.post('/loyalty-tiers/initialize');
+    return response.data;
+  },
 };
 
 export const counterAPI = {
@@ -362,9 +393,40 @@ export const counterAPI = {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     if (date) params.append('date', date);
-    return api.get(`/counter?${params}`);
+    const response = await api.get(`/counter?${params}`);
+    return response.data;
   },
-  create: async (data: any) => api.post('/counter', data),
-  updateStatus: async (id: string, status: string) => api.put(`/counter/${id}/status`, { status }),
-  getStats: async () => api.get('/counter/stats'),
+  create: async (data: any) => {
+    const response = await api.post('/counter', data);
+    return response.data;
+  },
+  updateStatus: async (id: string, status: string) => {
+    const response = await api.put(`/counter/${id}/status`, { status });
+    return response.data;
+  },
+  getStats: async () => {
+    const response = await api.get('/counter/stats');
+    return response.data;
+  },
+};
+
+export const backupAPI = {
+  create: async () => {
+    const response = await api.post('/settings/backup');
+    return response.data;
+  },
+  list: async () => {
+    const response = await api.get('/settings/backup');
+    return response.data;
+  },
+  download: async (filename: string) => {
+    const response = await api.get(`/settings/backup/${filename}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+  restore: async (filename: string) => {
+    const response = await api.post(`/settings/backup/${filename}/restore`);
+    return response.data;
+  },
 };

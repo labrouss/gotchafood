@@ -106,7 +106,7 @@ export default function LoyaltyTiers() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingTier) {
       updateMutation.mutate({ id: editingTier.id, data: form });
     } else {
@@ -214,10 +214,17 @@ export default function LoyaltyTiers() {
           <p className="text-gray-600 mb-4">Initialize default tiers to get started</p>
           <button
             onClick={() => {
-              loyaltyTiersAPI.initialize().then(() => {
-                queryClient.invalidateQueries({ queryKey: ['loyaltyTiers'] });
-                addToast('Default tiers initialized!');
-              });
+              console.log('[DEBUG] LoyaltyTiers: Initializing defaults...');
+              loyaltyTiersAPI.initialize()
+                .then((response) => {
+                  console.log('[DEBUG] LoyaltyTiers: Initialization success:', response);
+                  queryClient.invalidateQueries({ queryKey: ['loyaltyTiers'] });
+                  addToast('Default tiers initialized!');
+                })
+                .catch((error) => {
+                  console.error('[DEBUG] LoyaltyTiers: Initialization failed:', error);
+                  addToast('Failed to initialize tiers');
+                });
             }}
             className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700"
           >

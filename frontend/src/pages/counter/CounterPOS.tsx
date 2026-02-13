@@ -71,7 +71,7 @@ export default function CounterPOS() {
   const addToCart = (item: any) => {
     const existing = cart.find(i => i.menuItemId === item.id);
     if (existing) {
-      setCart(cart.map(i => 
+      setCart(cart.map(i =>
         i.menuItemId === item.id ? { ...i, quantity: i.quantity + 1 } : i
       ));
     } else {
@@ -93,7 +93,7 @@ export default function CounterPOS() {
     if (quantity < 1) {
       removeFromCart(menuItemId);
     } else {
-      setCart(cart.map(i => 
+      setCart(cart.map(i =>
         i.menuItemId === menuItemId ? { ...i, quantity } : i
       ));
     }
@@ -122,8 +122,8 @@ export default function CounterPOS() {
     });
   };
 
-  const preparing = orders.filter((o: any) => o.status === 'PREPARING');
-  const ready = orders.filter((o: any) => o.status === 'READY');
+  const preparing = orders.filter((o: any) => ['CONFIRMED', 'PREPARING'].includes(o.status));
+  const ready = orders.filter((o: any) => o.status === 'OUT_FOR_DELIVERY');
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -177,7 +177,7 @@ export default function CounterPOS() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-bold">{order.orderNumber}</div>
                       <button
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'READY' })}
+                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'OUT_FOR_DELIVERY' })}
                         className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
                       >
                         Mark Ready
@@ -203,7 +203,7 @@ export default function CounterPOS() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-bold">{order.orderNumber}</div>
                       <button
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'COMPLETED' })}
+                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'DELIVERED' })}
                         className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
                       >
                         Complete
