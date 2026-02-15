@@ -23,6 +23,10 @@ import imageRoutes from './routes/image.routes';
 import settingsRoutes from './routes/settings.routes';
 import loyaltyTiersRoutes from './routes/loyalty-tiers.routes';
 import counterRoutes from './routes/counter.routes';
+import tablesRoutes from './routes/tables.routes';
+import reservationsRoutes from './routes/reservations.routes';
+import waiterRoutes from './routes/waiter.routes';
+
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware';
@@ -116,6 +120,9 @@ app.use('/api/images',   imageRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/loyalty-tiers', loyaltyTiersRoutes);
 app.use('/api/counter',  counterRoutes);
+app.use('/api/tables', tablesRoutes);
+app.use('/api/reservations', reservationsRoutes);
+app.use('/api/waiter', waiterRoutes);
 
 // Serve uploaded images as static files with CORS headers
 app.use('/uploads', cors(corsOptions), express.static(path.join(process.cwd(), 'public', 'uploads')));

@@ -1,0 +1,336 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model addresses {
+  id          String   @id
+  user_id     String
+  label       String?
+  street      String
+  number      String
+  city        String
+  postal_code String
+  floor       String?
+  notes       String?  @db.Text
+  is_default  Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime
+  users       users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  orders      orders[]
+
+  @@index([user_id], map: "addresses_user_id_fkey")
+}
+
+model categories {
+  id          String       @id
+  name        String
+  name_en     String?
+  slug        String       @unique
+  description String?      @db.Text
+  image_url   String?
+  sort_order  Int          @default(0)
+  is_active   Boolean      @default(true)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime
+  menu_items  menu_items[]
+}
+
+model loyalty_rewards {
+  id              String   @id
+  user_id         String   @unique
+  points          Int      @default(0)
+  tier            String   @default("bronze")
+  lifetime_points Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime
+  users           users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model loyalty_tiers {
+  id                String   @id
+  name              String   @unique
+  min_points        Int
+  max_points        Int?
+  color             String   @default("#6b7280")
+  icon              String   @default("?")
+  discount          Int      @default(0)
+  points_multiplier Float    @default(1)
+  sort_order        Int      @default(0)
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime
+}
+
+model menu_items {
+  id             String           @id
+  category_id    String
+  name           String
+  name_en        String?
+  description    String?          @db.Text
+  price          Decimal          @db.Decimal(10, 2)
+  image_url      String?
+  is_available   Boolean          @default(true)
+  is_popular     Boolean          @default(false)
+  sort_order     Int              @default(0)
+  prep_time      Int              @default(10)
+  station        String           @default("kitchen")
+  calories       Int?
+  created_at     DateTime         @default(now())
+  updated_at     DateTime
+  categories     categories       @relation(fields: [category_id], references: [id], onDelete: Cascade)
+  order_items    order_items[]
+  product_images product_images[]
+
+  @@index([category_id], map: "menu_items_category_id_fkey")
+}
+
+model order_items {
+  id                                    String     @id
+  order_id                              String
+  menu_item_id                          String
+  quantity                              Int
+  price                                 Decimal    @db.Decimal(10, 2)
+  subtotal                              Decimal    @db.Decimal(10, 2)
+  notes                                 String?    @db.Text
+  station                               String?
+  prep_time                             Int        @default(10)
+  started_at                            DateTime?
+  completed_at                          DateTime?
+  assigned_to                           String?
+  completed_by                          String?
+  users_order_items_assigned_toTousers  users?     @relation("order_items_assigned_toTousers", fields: [assigned_to], references: [id])
+  users_order_items_completed_byTousers users?     @relation("order_items_completed_byTousers", fields: [completed_by], references: [id])
+  menu_items                            menu_items @relation(fields: [menu_item_id], references: [id])
+  orders                                orders     @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([assigned_to], map: "order_items_assigned_to_fkey")
+  @@index([completed_by], map: "order_items_completed_by_fkey")
+  @@index([menu_item_id], map: "order_items_menu_item_id_fkey")
+  @@index([order_id], map: "order_items_order_id_fkey")
+}
+
+model orders {
+  id                                   String                @id
+  user_id                              String
+  address_id                           String?
+  order_number                         String                @unique
+  status                               orders_status         @default(PENDING)
+  subtotal                             Decimal               @db.Decimal(10, 2)
+  delivery_fee                         Decimal               @default(0.00) @db.Decimal(10, 2)
+  total_amount                         Decimal               @db.Decimal(10, 2)
+  notes                                String?               @db.Text
+  delivery_time                        DateTime?
+  completed_at                         DateTime?
+  cancelled_at                         DateTime?
+  cancellation_reason                  String?               @db.Text
+  placed_at                            DateTime              @default(now())
+  confirmed_at                         DateTime?
+  confirmed_by                         String?
+  preparing_at                         DateTime?
+  preparing_by                         String?
+  ready_at                             DateTime?
+  ready_by                             String?
+  out_for_delivery_at                  DateTime?
+  out_for_delivery_by                  String?
+  delivered_at                         DateTime?
+  delivered_by                         String?
+  estimated_time                       Int                   @default(15)
+  additional_time                      Int                   @default(0)
+  created_at                           DateTime              @default(now())
+  updated_at                           DateTime
+  counter_staff_id                     String?
+  is_paid                              Boolean               @default(false)
+  loyalty_phone                        String?
+  order_source                         String                @default("web")
+  order_type                           orders_order_type     @default(DELIVERY)
+  payment_method                       String?
+  table_number                         String?
+  waiter_id                            String?
+  points_earned                        Int                   @default(0)
+  order_items                          order_items[]
+  users_orders_counter_staff_idTousers users?                @relation("orders_counter_staff_idTousers", fields: [counter_staff_id], references: [id], onUpdate: NoAction, map: "fk_counter_staff")
+  addresses                            addresses?            @relation(fields: [address_id], references: [id])
+  users_orders_confirmed_byTousers     users?                @relation("orders_confirmed_byTousers", fields: [confirmed_by], references: [id])
+  users_orders_delivered_byTousers     users?                @relation("orders_delivered_byTousers", fields: [delivered_by], references: [id])
+  users_orders_user_idTousers          users                 @relation("orders_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade)
+  users_orders_waiter_idTousers        users?                @relation("orders_waiter_idTousers", fields: [waiter_id], references: [id])
+  payments                             payments?
+  reviews                              reviews[]
+  reward_transactions                  reward_transactions[]
+
+  @@index([counter_staff_id], map: "idx_counter_staff")
+  @@index([order_source], map: "idx_order_source")
+  @@index([counter_staff_id], map: "idx_orders_counter_staff")
+  @@index([waiter_id], map: "idx_orders_waiter")
+  @@index([address_id], map: "orders_address_id_fkey")
+  @@index([confirmed_by], map: "orders_confirmed_by_fkey")
+  @@index([delivered_by], map: "orders_delivered_by_fkey")
+  @@index([user_id], map: "orders_user_id_fkey")
+}
+
+model payments {
+  id             String          @id
+  order_id       String          @unique
+  amount         Decimal         @db.Decimal(10, 2)
+  method         payments_method
+  status         payments_status @default(PENDING)
+  transaction_id String?
+  paid_at        DateTime?
+  created_at     DateTime        @default(now())
+  updated_at     DateTime
+  orders         orders          @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+model product_images {
+  id           String     @id
+  menu_item_id String
+  url          String
+  sort_order   Int        @default(0)
+  is_primary   Boolean    @default(false)
+  created_at   DateTime   @default(now())
+  menu_items   menu_items @relation(fields: [menu_item_id], references: [id], onDelete: Cascade)
+
+  @@index([menu_item_id], map: "product_images_menu_item_id_fkey")
+}
+
+model reviews {
+  id             String   @id
+  user_id        String
+  order_id       String?
+  rating         Int
+  comment        String   @db.Text
+  type           String
+  status         String   @default("pending")
+  admin_response String?  @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime
+  orders         orders?  @relation(fields: [order_id], references: [id])
+  users          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id], map: "reviews_order_id_fkey")
+  @@index([user_id], map: "reviews_user_id_fkey")
+}
+
+model reward_transactions {
+  id         String   @id
+  user_id    String
+  order_id   String?
+  points     Int
+  type       String
+  reason     String
+  created_at DateTime @default(now())
+  orders     orders?  @relation(fields: [order_id], references: [id])
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id], map: "reward_transactions_order_id_fkey")
+  @@index([user_id], map: "reward_transactions_user_id_fkey")
+}
+
+model staff_profiles {
+  id              String        @id
+  user_id         String        @unique
+  employee_id     String        @unique
+  hired_at        DateTime
+  fired_at        DateTime?
+  fired_reason    String?       @db.Text
+  contract_type   String        @default("full-time")
+  hourly_rate     Decimal?      @db.Decimal(8, 2)
+  emergency_name  String?
+  emergency_phone String?
+  notes           String?       @db.Text
+  created_at      DateTime      @default(now())
+  updated_at      DateTime
+  users           users         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  work_shifts     work_shifts[]
+}
+
+model store_settings {
+  id         String   @id
+  key        String   @unique
+  value      String   @db.Text
+  category   String
+  label      String
+  created_at DateTime @default(now())
+  updated_at DateTime
+  dataType   String
+}
+
+model users {
+  id                                          String                @id
+  email                                       String                @unique
+  password                                    String
+  first_name                                  String
+  last_name                                   String
+  phone                                       String?
+  role                                        users_role            @default(CUSTOMER)
+  is_active                                   Boolean               @default(true)
+  last_login_at                               DateTime?
+  last_login_ip                               String?
+  email_verified                              Boolean               @default(false)
+  email_verify_token                          String?
+  email_verify_expiry                         DateTime?
+  phone_verified                              Boolean               @default(false)
+  phone_verify_code                           String?
+  phone_verify_expiry                         DateTime?
+  routing_role                                String?
+  created_at                                  DateTime              @default(now())
+  updated_at                                  DateTime
+  addresses                                   addresses[]
+  loyalty_rewards                             loyalty_rewards?
+  order_items_order_items_assigned_toTousers  order_items[]         @relation("order_items_assigned_toTousers")
+  order_items_order_items_completed_byTousers order_items[]         @relation("order_items_completed_byTousers")
+  orders_orders_counter_staff_idTousers       orders[]              @relation("orders_counter_staff_idTousers")
+  orders_orders_confirmed_byTousers           orders[]              @relation("orders_confirmed_byTousers")
+  orders_orders_delivered_byTousers           orders[]              @relation("orders_delivered_byTousers")
+  orders_orders_user_idTousers                orders[]              @relation("orders_user_idTousers")
+  orders_orders_waiter_idTousers              orders[]              @relation("orders_waiter_idTousers")
+  reviews                                     reviews[]
+  reward_transactions                         reward_transactions[]
+  staff_profiles                              staff_profiles?
+}
+
+model work_shifts {
+  id             String         @id
+  profile_id     String
+  day_of_week    Int
+  start_time     String
+  end_time       String
+  station        String?
+  is_active      Boolean        @default(true)
+  created_at     DateTime       @default(now())
+  staff_profiles staff_profiles @relation(fields: [profile_id], references: [id], onDelete: Cascade)
+
+  @@index([profile_id], map: "work_shifts_profile_id_fkey")
+}
+
+enum payments_method {
+  CASH
+  CARD
+  ONLINE
+}
+
+enum orders_status {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum payments_status {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum users_role {
+  CUSTOMER
+  ADMIN
+  STAFF

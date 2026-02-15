@@ -29,6 +29,17 @@ import CreateReview from './pages/reviews/CreateReview';
 import MyReviews from './pages/reviews/MyReviews';
 import LoyaltyPage from './pages/loyalty/LoyaltyPage';
 import ToastContainer from './components/ToastContainer';
+// Pack 6 - Admin Pages
+import TablesManagement from './pages/admin/TablesManagement';
+import ReservationsCalendar from './pages/admin/ReservationsCalendar';
+
+// Pack 6 - Waiter Pages
+import WaiterDashboard from './pages/waiter/WaiterDashboard';
+
+// Pack 6 - Customer Pages
+import ReservationForm from './pages/customer/ReservationForm';
+import MyReservations from './pages/customer/MyReservations';
+
 import { useAuthStore } from './store/authStore';
 import { useCartStore } from './store/cartStore';
 
@@ -235,6 +246,13 @@ function AppContent() {
 
           {/* Loyalty Route */}
           <Route path="/loyalty" element={<LoyaltyPage />} />
+	  {/* Waiter and Tables Route */}
+	  <Route path="/admin/tables" element={<TablesManagement />} />
+          <Route path="/admin/reservations" element={<ReservationsCalendar />} />
+          <Route path="/waiter" element={<WaiterDashboard />} />
+          <Route path="/reserve" element={<ReservationForm />} />
+          <Route path="/my-reservations" element={<MyReservations />} /> 
+
         </Routes>
 
         {/* Footer */}
