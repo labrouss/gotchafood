@@ -94,10 +94,10 @@ export default function WaiterDashboard() {
   });
 
   if (!user || user.role !== 'STAFF') {
-    navigate('/');
-    return null;
+  navigate('/');
+  return null;
   }
-
+ 
   const dashboard = data?.data || {};
   const sessions = dashboard.sessions || [];
   const shift = dashboard.shift;
@@ -246,11 +246,11 @@ export default function WaiterDashboard() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/waiter/session/${session.id}`);
+                            navigate(`/waiter/take-order/${session.id}`);
                           }}
                           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                         >
-                          📋 View Details
+                          📋 View Details / Take Order
                         </button>
                         <button
                           onClick={(e) => {
