@@ -19,6 +19,7 @@ const routingRoles = [
   { value: 'hot-prep', label: 'Hot Prep', icon: '🔥', color: 'bg-orange-600' },
   { value: 'cold-prep', label: 'Cold Prep', icon: '🥗', color: 'bg-green-600' },
   { value: 'barista', label: 'Barista', icon: '☕', color: 'bg-amber-700' },
+  { value: 'waiter', label: 'Waiter', icon: '☕', color: 'bg-amber-700' },
 ];
 
 export default function StaffManagement() {

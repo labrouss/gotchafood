@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 
 const DAYS     = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const STATIONS = ['kitchen','barista','cold-prep','hot-prep','delivery','counter'];
+const STATIONS = ['kitchen','barista','cold-prep','hot-prep','delivery','counter','waiter'];
 const STATION_ICONS: any = { kitchen:'🍳', barista:'☕', 'cold-prep':'🥗', 'hot-prep':'🔥', delivery:'🚗', counter:'🧑‍💼' };
 const CONTRACT_TYPES = ['full-time','part-time','hourly'];
 
