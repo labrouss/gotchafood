@@ -6,6 +6,36 @@ import { useToastStore } from '../../components/ToastContainer';
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
 
+const formatTime = (time: string) => {
+  if (!time) return '';
+  try {
+    // Extract HH:MM directly from ISO string "1970-01-01T11:00:00.000Z"
+    const timePart = time.split('T')[1]; // "11:00:00.000Z"
+    const [hours, minutes] = timePart.split(':');
+    const h = parseInt(hours);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  } catch {
+    return time;
+  }
+};
+
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('el-GR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC'  // Important! Prevent day shifting due to timezone
+    });
+  } catch {
+    return dateStr;
+  }
+};
+
 const reservationsAPI = {
   getAll: () => fetch(`${API_URL}/api/reservations`, {
     headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
@@ -112,14 +142,6 @@ export default function ReservationsCalendar() {
       case 'NO_SHOW': return '👻';
       default: return '❓';
     }
-  };
-
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01 ${time}`).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
   };
 
   const handleConfirm = (id: string) => {
@@ -295,7 +317,6 @@ export default function ReservationsCalendar() {
                         </span>
                         <span className="text-2xl font-bold">{formatTime(reservation.reservationTime)}</span>
                       </div>
-
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                           <div className="text-sm text-gray-600">Customer</div>

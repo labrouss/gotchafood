@@ -73,7 +73,7 @@ export default function TakeOrder() {
 
   const session = sessionData?.data?.session;
 
-  const menu = Array.isArray(menuData?.data) ? menuData.data : [];
+  const menu = menuData?.data?.menuItems || [];
   const categories = [...new Set(menu.map((item: any) => item.category?.name).filter(Boolean))];
 
   const filteredMenu = selectedCategory
@@ -81,41 +81,41 @@ export default function TakeOrder() {
    : menu;
 
 
-  const addToCart = (item: any) => {
-    const existingIndex = cart.findIndex(i => i.menuItemId === item.id);
-    
-    if (existingIndex >= 0) {
-      const newCart = [...cart];
-      newCart[existingIndex].quantity += 1;
-      newCart[existingIndex].subtotal = newCart[existingIndex].quantity * item.price;
-      setCart(newCart);
-    } else {
-      setCart([...cart, {
-        menuItemId: item.id,
-        name: item.name,
-        quantity: 1,
-        price: item.price,
-        subtotal: item.price,
-        notes: '',
-        station: item.station || 'kitchen',
-        prepTime: item.prepTime || 10,
-      }]);
-    }
-    addToast(`Added ${item.name}`);
-  };
+   const addToCart = (item: any) => {
+   const existingIndex = cart.findIndex(i => i.menuItemId === item.id);
+
+   if (existingIndex >= 0) {
+     const newCart = [...cart];
+     newCart[existingIndex].quantity += 1;
+     newCart[existingIndex].subtotal = newCart[existingIndex].quantity * Number(item.price);
+     setCart(newCart);
+   } else {
+     setCart([...cart, {
+       menuItemId: item.id,
+       name: item.name,
+       quantity: 1,
+       price: Number(item.price),
+       subtotal: Number(item.price),
+       notes: '',
+       station: item.station || 'kitchen',
+       prepTime: item.prepTime || 10,
+     }]);
+   }
+   addToast(`Added ${item.name}`);
+ };
 
   const updateQuantity = (index: number, change: number) => {
-    const newCart = [...cart];
-    newCart[index].quantity += change;
-    
-    if (newCart[index].quantity <= 0) {
-      newCart.splice(index, 1);
-    } else {
-      newCart[index].subtotal = newCart[index].quantity * newCart[index].price;
-    }
-    
-    setCart(newCart);
-  };
+  const newCart = [...cart];
+  newCart[index].quantity += change;
+  
+  if (newCart[index].quantity <= 0) {
+    newCart.splice(index, 1);
+  } else {
+    newCart[index].subtotal = newCart[index].quantity * Number(newCart[index].price);
+  }
+  
+  setCart(newCart);
+};
 
   const updateItemNotes = (index: number, notes: string) => {
     const newCart = [...cart];
@@ -255,7 +255,7 @@ export default function TakeOrder() {
                 )}
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-indigo-600">
-                    €{item.price.toFixed(2)}
+                    €{Number(item.price).toFixed(2)}
                   </span>
                   <span className="text-xs text-gray-500">
                     {item.prepTime}min
@@ -323,7 +323,7 @@ export default function TakeOrder() {
                             +
                           </button>
                           <span className="ml-auto font-bold">
-                            €{item.subtotal.toFixed(2)}
+                            €{Number(item.subtotal).toFixed(2)}
                           </span>
                         </div>
 

@@ -89,6 +89,9 @@ function AppContent() {
                     <Link to="/my-orders" className="hover:text-yellow-300 transition">
                       Παραγγελίες μου
                     </Link>
+		    <Link to="/my-reservations" className="hover:text-yellow-300 transition">
+                    📅 Κρατήσεις μου
+                    </Link>
                     <Link to="/cart" className="hover:text-yellow-300 transition relative">
                       🛒 Καλάθι
                       {itemCount > 0 && (
@@ -99,6 +102,13 @@ function AppContent() {
                     </Link>
                   </>
                 )}
+		 
+               {user && user.role === 'STAFF' && (
+                 <Link to="/waiter" className="hover:text-yellow-300 transition font-semibold">
+                   👔 Τα Τραπέζια μου
+                 </Link>
+               )}
+
 
                 {isAdmin && (
                   <div className="relative group">
@@ -106,6 +116,14 @@ function AppContent() {
                       ⚙️ Admin
                     </button>
                     <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+		       <Link to="/admin/tables" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
+                         🍽️ Τραπέζια
+                       </Link>
+                       <Link to="/admin/reservations" className="block px-4 py-2 hover:bg-gray-100">
+                         📅 Κρατήσεις
+                       </Link>
+                       <div className="border-t border-gray-200"></div>
+
                       <Link to="/admin/insights" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
                         📈 Insights
                       </Link>
@@ -164,6 +182,9 @@ function AppContent() {
                         <Link to="/my-orders" className="block px-4 py-3 hover:bg-gray-100">
                           📦 Οι Παραγγελίες μου
                         </Link>
+                        <Link to="/my-reservations" className="block px-4 py-3 hover:bg-gray-100">
+                          📅 Οι Κρατήσεις μου
+                        </Link>
                         <Link to="/my-addresses" className="block px-4 py-3 hover:bg-gray-100">
                           📍 Οι Διευθύνσεις μου
                         </Link>
@@ -191,6 +212,9 @@ function AppContent() {
                   </>
                 ) : (
                   <>
+		    <Link to="/reserve" className="hover:text-yellow-300 transition">
+                      📅 Κράτηση
+                    </Link>
                     <Link
                       to="/login"
                       className="hover:text-yellow-300 transition"
