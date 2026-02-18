@@ -8,6 +8,7 @@ const statusColors: any = {
   PENDING: 'bg-yellow-400 text-gray-900',
   CONFIRMED: 'bg-blue-500 text-white',
   PREPARING: 'bg-purple-500 text-white',
+  READY: 'bg-green-500 text-white',
   OUT_FOR_DELIVERY: 'bg-indigo-600 text-white',
 };
 
@@ -105,6 +106,7 @@ export default function KitchenDisplayPage() {
     PENDING:          filteredOrders.filter((o: any) => o.status === 'PENDING'),
     CONFIRMED:        filteredOrders.filter((o: any) => o.status === 'CONFIRMED'),
     PREPARING:        filteredOrders.filter((o: any) => o.status === 'PREPARING'),
+    READY:            filteredOrders.filter((o: any) => o.status === 'READY'),   
     OUT_FOR_DELIVERY: filteredOrders.filter((o: any) => o.status === 'OUT_FOR_DELIVERY'),
   };
 
@@ -299,9 +301,19 @@ export default function KitchenDisplayPage() {
             </div>
           )}
 
+	  {order.status === 'READY' && (
+            <div className="col-span-2 text-center text-sm text-green-600 font-semibold py-1">
+              {order.orderNumber?.startsWith('W') ? (
+                <>👔 Ready for waiter pickup</>
+              ) : (
+                <>📦 Ready for pickup</>
+              )}
+            </div>
+          )}
+
           {order.status === 'OUT_FOR_DELIVERY' && (
             <div className="col-span-2 text-center text-sm text-indigo-600 font-semibold py-1">
-              📦 Ready for pickup by delivery driver
+              📦 Out for delivery
             </div>
           )}
 
@@ -412,7 +424,7 @@ export default function KitchenDisplayPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {(['PENDING','CONFIRMED','PREPARING','OUT_FOR_DELIVERY'] as const).map(status => {
+            {(['PENDING','CONFIRMED','PREPARING','READY','OUT_FOR_DELIVERY'] as const).map(status => {
               const sOrders = grouped[status];
               if (sOrders.length === 0) return null;
               return (

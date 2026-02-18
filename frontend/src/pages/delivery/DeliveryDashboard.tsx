@@ -13,8 +13,11 @@ export default function DeliveryDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['delivery-orders'],
     queryFn: () => adminAPI.getOrders(),
+    // add filter for waiter orders
+    orderNumber: { not: { startsWith: 'W' } },	    
     refetchInterval: 10000,
   });
+  
 
   const deliverMutation = useMutation({
     mutationFn: (orderId: string) =>
@@ -35,7 +38,11 @@ export default function DeliveryDashboard() {
     );
   }
 
-  const orders = (data?.data?.orders || []).filter((o: any) => o.status === 'OUT_FOR_DELIVERY');
+  //const orders = (data?.data?.orders || []).filter((o: any) => o.status === 'OUT_FOR_DELIVERY');
+  //
+  const orders = (data?.data?.orders || [])
+    .filter((o: any) => o.status === 'OUT_FOR_DELIVERY')
+    .filter((o: any) => !o.orderNumber.startsWith('W'));
 
   return (
     <div className="container mx-auto px-4 py-8">

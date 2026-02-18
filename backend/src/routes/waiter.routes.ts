@@ -11,6 +11,7 @@ import {
   clockIn,
   clockOut,
   getWaiterStats,
+  addItemsToOrder
 } from '../controllers/waiter.controller';
 
 const router = Router();
@@ -28,6 +29,8 @@ router.post('/sessions', startTableSession);
 router.get('/sessions/:id', getTableSession);
 router.post('/sessions/:id/end', endTableSession);
 router.post('/sessions/:sessionId/orders', createSessionOrder);
+// Add items to existing order
+router.post('/:sessionId/orders/:orderId/items', authenticate, addItemsToOrder);
 
 // Shifts
 router.get('/shifts', getMyShifts);

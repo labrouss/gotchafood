@@ -196,6 +196,19 @@ export const endTableSession = async (req: Request, res: Response, next: NextFun
       0
     );
 
+    // Mark all orders as COMPLETED (waiter closes them)
+    await prisma.order.updateMany({
+      where: {
+        tableSessionId: id,
+        status: { not: 'CANCELLED' },
+      },
+      data: {
+        status: 'COMPLETED',
+        isPaid: true,
+        paidAt: new Date(),
+      },
+    });
+
     // Update session
     const updatedSession = await prisma.tableSession.update({
       where: { id },
@@ -206,6 +219,7 @@ export const endTableSession = async (req: Request, res: Response, next: NextFun
         notes,
       },
     });
+
 
     // Update table status back to available
     await prisma.table.update({
@@ -307,6 +321,79 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
       success: true,
       message: 'Order created successfully',
       data: { order },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── Add items to existing order ────────────────────────────────────────────
+export const addItemsToOrder = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionId, orderId } = req.params;
+    const { items } = req.body;
+    const waiterId = (req as any).user.id;
+
+    // Get order and verify it belongs to this session
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        tableSessionId: sessionId,
+        status: { in: ['CONFIRMED', 'PREPARING', 'READY'] }, // Can add to these statuses
+      },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found or cannot be modified',
+      });
+    }
+
+    // Calculate additional amount
+    const additionalAmount = items.reduce((sum: number, item: any) => {
+      return sum + (item.price * item.quantity);
+    }, 0);
+
+    // Add items to order
+    await prisma.orderItem.createMany({
+      data: items.map((item: any) => ({
+        orderId: order.id,
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity,
+        notes: item.notes,
+        station: item.station || 'kitchen',
+        prepTime: item.prepTime || 10,
+      })),
+    });
+
+    // Update order totals
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        subtotal: { increment: additionalAmount },
+        totalAmount: { increment: additionalAmount },
+        // Reset to CONFIRMED so kitchen prepares new items
+        status: 'CONFIRMED',
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: {
+              select: { name: true, imageUrl: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Items added to order',
+      data: { order: updatedOrder },
     });
   } catch (error) {
     next(error);

@@ -25,6 +25,14 @@ const waiterAPI = {
     headers: getAuthHeader(),
     body: JSON.stringify(data)
   }).then(r => r.json()),
+  
+  // NEW: Add items to existing order
+  addItemsToOrder: (sessionId: string, orderId: string, data: any) => fetch(
+    `${API_URL}/api/waiter/sessions/${sessionId}/orders/${orderId}/items`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: JSON.stringify(data)
+  }).then(r => r.json()),
 };
 
 export default function TakeOrder() {
@@ -39,12 +47,22 @@ export default function TakeOrder() {
   const [notes, setNotes] = useState('');
   const [loyaltyPhone, setLoyaltyPhone] = useState('');
   const [showCart, setShowCart] = useState(false);
+  const [existingOrders, setExistingOrders] = useState<any[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const { data: sessionData, isLoading: loadingSession } = useQuery({
-    queryKey: ['session', sessionId],
-    queryFn: () => waiterAPI.getSession(sessionId!),
-    enabled: !!sessionId,
-  });
+  queryKey: ['session', sessionId],
+  queryFn: () => waiterAPI.getSession(sessionId!),
+  enabled: !!sessionId,
+  onSuccess: (data) => {
+    // Extract existing open orders
+    const orders = data?.data?.session?.orders || [];
+    const openOrders = orders.filter((o: any) => 
+      ['CONFIRMED', 'PREPARING', 'READY'].includes(o.status)
+    );
+    setExistingOrders(openOrders);
+  },
+});
 
   const { data: menuData, isLoading: loadingMenu } = useQuery({
     queryKey: ['menu'],
@@ -65,6 +83,22 @@ export default function TakeOrder() {
       addToast(error.message || 'Failed to create order');
     },
   });
+
+  const addItemsToOrderMutation = useMutation({
+  mutationFn: (data: any) => waiterAPI.addItemsToOrder(data.sessionId, data.orderId, { items: data.items }),
+  onSuccess: () => {
+    addToast('Items added to order!');
+    setCart([]);
+    setNotes('');
+    setSelectedOrderId(null);
+    queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
+    queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+    navigate('/waiter');
+  },
+  onError: (error: any) => {
+    addToast(error.message || 'Failed to add items');
+  },
+});
 
   if (!user || user.role !== 'STAFF') {
     navigate('/');
@@ -130,17 +164,27 @@ export default function TakeOrder() {
   };
 
   const handleSubmitOrder = () => {
-    if (cart.length === 0) {
-      addToast('Cart is empty');
-      return;
-    }
+  if (cart.length === 0) {
+    addToast('Cart is empty');
+    return;
+  }
 
+  // If adding to existing order
+  if (selectedOrderId) {
+    addItemsToOrderMutation.mutate({
+      sessionId: sessionId!,
+      orderId: selectedOrderId,
+      items: cart,
+    });
+  } else {
+    // Create new order
     createOrderMutation.mutate({
       items: cart,
       notes,
       loyaltyPhone: loyaltyPhone || undefined,
     });
-  };
+  }
+};
 
   const cartTotal = cart.reduce((sum, item) => sum + item.subtotal, 0);
 
@@ -352,6 +396,30 @@ export default function TakeOrder() {
                     />
                   </div>
 
+		  {/* Existing Orders - Add to or Create New */}
+                  {existingOrders.length > 0 && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <label className="block text-sm font-semibold mb-2">
+                        Add to existing order or create new?
+                      </label>
+                      <select
+                        value={selectedOrderId || 'new'}
+                        onChange={(e) => setSelectedOrderId(e.target.value === 'new' ? null : e.target.value)}
+                        className="w-full border rounded-lg px-3 py-2"
+                      >
+                        <option value="new">➕ Create New Order</option>
+                        {existingOrders.map((order: any) => (
+                          <option key={order.id} value={order.id}>
+                            ➕ Add to Order {order.orderNumber} (€{order.totalAmount.toFixed(2)}) - {order.status}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-blue-600 mt-1">
+                        {selectedOrderId ? 'Items will be added to existing order' : 'New order will be created'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Loyalty Phone */}
                   <div className="mb-6">
                     <label className="block text-sm font-medium mb-1">
@@ -375,12 +443,15 @@ export default function TakeOrder() {
                   </div>
 
                   {/* Submit Button */}
-                  <button
+		  <button
                     onClick={handleSubmitOrder}
-                    disabled={createOrderMutation.isPending}
+                    disabled={createOrderMutation.isPending || addItemsToOrderMutation.isPending}
                     className="w-full py-4 bg-green-600 text-white text-lg font-bold rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {createOrderMutation.isPending ? 'Sending...' : '✓ Send to Kitchen'}
+                    >
+                    {(createOrderMutation.isPending || addItemsToOrderMutation.isPending) ?
+                      'Sending...' :
+                      selectedOrderId ? '➕ Add to Existing Order' : '✓ Send New Order to Kitchen'
+                    }
                   </button>
                 </>
               )}

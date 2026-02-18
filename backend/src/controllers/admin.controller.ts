@@ -570,6 +570,7 @@ export const getOrderDetails = async (
   }
 };
 
+
 export const updateOrderStatus = async (
   req: Request,
   res: Response,
@@ -583,15 +584,29 @@ export const updateOrderStatus = async (
         'PENDING',
         'CONFIRMED',
         'PREPARING',
+        'READY',
+	'SERVED',
         'OUT_FOR_DELIVERY',
         'DELIVERED',
         'CANCELLED',
+        'COMPLETED',
       ]),
       additionalTime: z.number().optional(),
     });
 
     const { status, additionalTime } = schema.parse(req.body);
     const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    // Kitchen restrictions
+    if (userRole === 'KITCHEN' || userRole === 'STAFF') {
+      if (status === 'COMPLETED' || status === 'DELIVERED') {
+        return res.status(403).json({
+          success: false,
+          message: 'Kitchen can only mark orders as PREPARING or READY.',
+        });
+      }
+    }
 
     const timestampUpdates: any = {
       status,
@@ -608,6 +623,14 @@ export const updateOrderStatus = async (
         timestampUpdates.preparingAt = new Date();
         if (userId) timestampUpdates.preparingBy = userId;
         break;
+      case 'READY':
+        timestampUpdates.readyAt = new Date();
+        if (userId) timestampUpdates.readyBy = userId;
+        break;
+      case 'SERVED':
+        timestampUpdates.servedAt = new Date();
+        if (userId) timestampUpdates.servedBy = userId;
+        break;
       case 'OUT_FOR_DELIVERY':
         timestampUpdates.readyAt = new Date();
         if (userId) timestampUpdates.readyBy = userId;
@@ -618,33 +641,43 @@ export const updateOrderStatus = async (
         timestampUpdates.deliveredAt = new Date();
         if (userId) timestampUpdates.deliveredBy = userId;
         timestampUpdates.completedAt = new Date();
-        // Award loyalty points on delivery
-        await awardLoyaltyPoints(id);
+        break;
+      case 'COMPLETED':
+        timestampUpdates.completedAt = new Date();
         break;
       case 'CANCELLED':
         timestampUpdates.cancelledAt = new Date();
         break;
     }
 
-    // Handle additional time request
-    if (additionalTime !== undefined) {
-      timestampUpdates.additionalTime = additionalTime;
+    // Handle additional prep time
+    if (additionalTime && (status === 'PREPARING' || status === 'CONFIRMED')) {
+      const order = await prisma.order.findUnique({
+        where: { id },
+        select: { estimatedPrepTime: true },
+      });
+      if (order) {
+        timestampUpdates.estimatedPrepTime =
+          (order.estimatedPrepTime || 0) + additionalTime;
+      }
     }
 
-    const order = await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id },
       data: timestampUpdates,
       include: {
-        user: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
         items: {
           include: {
             menuItem: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
           },
         },
         address: true,
@@ -653,8 +686,7 @@ export const updateOrderStatus = async (
 
     res.json({
       success: true,
-      message: 'Order status updated successfully',
-      data: { order },
+      data: { order: updatedOrder },
     });
   } catch (error) {
     next(error);

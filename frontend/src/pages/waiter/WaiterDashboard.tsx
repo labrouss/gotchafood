@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import { Link } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
 
@@ -229,14 +230,15 @@ export default function WaiterDashboard() {
                             Orders ({session.orders.length})
                           </div>
                           <div className="space-y-1">
-                            {session.orders.map((order: any) => (
-                              <div key={order.id} className="flex justify-between items-center text-sm">
-                                <span className={getOrderStatusColor(order.status)}>
-                                  {order.orderNumber} - {order.status}
-                                </span>
-                                <span className="font-semibold">€{Number(order.totalAmount).toFixed(2)}</span>
-                              </div>
-                            ))}
+			  {session.orders.map((order: any) => (
+                          <Link
+                            key={order.id}
+                            to={`/waiter/order/${order.id}`}
+                            className="block text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                          >
+                            {order.orderNumber} - {order.status} - €{Number(order.totalAmount).toFixed(2)}
+                          </Link>
+                        ))}
                           </div>
                         </div>
                       )}

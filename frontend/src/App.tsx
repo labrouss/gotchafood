@@ -30,12 +30,14 @@ import MyReviews from './pages/reviews/MyReviews';
 import LoyaltyPage from './pages/loyalty/LoyaltyPage';
 import ToastContainer from './components/ToastContainer';
 
+
 // Pack 6 - Admin Pages
 import TablesManagement from './pages/admin/TablesManagement';
 import ReservationsCalendar from './pages/admin/ReservationsCalendar';
 
 // Pack 6 - Waiter Pages
 import WaiterDashboard from './pages/waiter/WaiterDashboard';
+import WaiterOrderDetail from './pages/waiter/WaiterOrderDetail';
 import TakeOrder from './pages/waiter/TakeOrder';
 
 // Pack 6 - Customer Pages
@@ -277,6 +279,7 @@ function AppContent() {
           <Route path="/admin/reservations" element={<ReservationsCalendar />} />
           <Route path="/waiter" element={<WaiterDashboard />} />
           <Route path="/waiter/take-order/:sessionId" element={<TakeOrder />} />
+	  <Route path="/waiter/order/:orderId" element={<WaiterOrderDetail />} /> 
           <Route path="/reserve" element={<ReservationForm />} />
           <Route path="/my-reservations" element={<MyReservations />} /> 
 

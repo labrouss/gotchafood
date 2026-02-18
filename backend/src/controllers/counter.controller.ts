@@ -133,7 +133,7 @@ export const getAllOrders = async (req: Request, res: Response, next: NextFuncti
   try {
     const { status, date, source } = req.query;
 
-    const where: any = { orderSource: { in: ['counter', 'waiter'] } };
+    const where: any = { orderSource: { in: ['counter', 'waiter'] }, orderNumber: { not: { startsWith: 'W' } } };
     if (source && source !== 'ALL') where.orderSource = source;
     if (status && status !== 'ALL') where.status = status;
     if (date) {

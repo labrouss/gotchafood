@@ -65,7 +65,11 @@ export default function CounterPOS() {
   }
 
   const menuItems = menuData?.data?.menuItems || [];
-  const orders = ordersData?.data?.orders || [];
+
+  const orders = (ordersData?.data?.orders || [])
+    .filter((o: any) => !o.orderNumber.startsWith('W'))
+    .filter((o: any) => !o.orderNumber.startsWith('ORD-'));
+
   const stats = statsData?.data || {};
 
   const addToCart = (item: any) => {
