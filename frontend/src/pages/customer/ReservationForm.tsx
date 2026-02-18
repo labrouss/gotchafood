@@ -4,22 +4,22 @@ import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 import { useAuthStore } from '../../store/authStore';
 
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
+const getAuthHeader = () => ({
+  'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,
+  'Content-Type': 'application/json'
+});
 
 const reservationsAPI = {
   getAvailableTables: (date: string, time: string, partySize: number) =>
-    fetch(`${API_URL}/api/tables/available?date=${date}&time=${time}&partySize=${partySize}`)
-      .then(r => r.json()),
+    fetch(`${API_URL}/api/tables/available?date=${date}&time=${time}&partySize=${partySize}`, {
+      headers: getAuthHeader()
+    }).then(r => r.json()),
   
   create: (data: any) => fetch(`${API_URL}/api/reservations`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token && {
-        'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`
-      })
-    },
+    headers: getAuthHeader(),
     body: JSON.stringify(data)
   }).then(r => r.json()),
 };
@@ -40,6 +40,45 @@ export default function ReservationForm() {
     customerEmail: user?.email || '',
     specialRequests: '',
   });
+
+  // NEW: Check which time slots have available tables
+  const { data: availableTimeSlotsData, isLoading: loadingTimeSlots } = useQuery({
+    queryKey: ['availableTimeSlots', formData.date, formData.partySize],
+    queryFn: async () => {
+      if (!formData.date || !formData.partySize) return [];
+      
+      const slots: string[] = [];
+      
+      // Check each time slot
+      for (let hour = 11; hour <= 22; hour++) {
+        for (const minute of [0, 30]) {
+          if (hour === 22 && minute === 30) break;
+          
+          const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+          
+          try {
+            const response = await reservationsAPI.getAvailableTables(
+              formData.date,
+              time,
+              formData.partySize
+            );
+            
+            // If there are available tables for this time slot, include it
+            if (response.success && response.data?.tables?.length > 0) {
+              slots.push(time);
+            }
+          } catch (error) {
+            console.error(`Error checking slot ${time}:`, error);
+          }
+        }
+      }
+      
+      return slots;
+    },
+    enabled: !!formData.date && formData.partySize > 0,
+  });
+
+  const availableTimeSlots = availableTimeSlotsData || [];
 
   const { data: tablesData, isLoading: loadingTables } = useQuery({
     queryKey: ['availableTables', formData.date, formData.time, formData.partySize],
@@ -98,20 +137,19 @@ export default function ReservationForm() {
   };
 
   const formatTime = (time: string) => {
-    return new Date(`2000-01-01 ${time}`).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    const [hours, minutes] = time.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${hour12}:${String(minutes).padStart(2, '0')} ${ampm}`;
   };
 
-  // Generate time slots (11:00 AM to 10:00 PM, every 30 minutes)
-  const timeSlots = [];
+  // Generate ALL time slots (for reference, we'll filter to show only available)
+  const allTimeSlots = [];
   for (let hour = 11; hour <= 22; hour++) {
     for (let minute of [0, 30]) {
       if (hour === 22 && minute === 30) break;
       const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-      timeSlots.push(time);
+      allTimeSlots.push(time);
     }
   }
 
@@ -176,7 +214,9 @@ export default function ReservationForm() {
                   <input
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, date: e.target.value, time: '' });
+                    }}
                     min={minDate}
                     max={maxDateStr}
                     className="w-full border-2 rounded-lg px-4 py-3 text-lg"
@@ -189,18 +229,19 @@ export default function ReservationForm() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Time *
+                    Party Size *
                   </label>
                   <select
-                    value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    value={formData.partySize}
+                    onChange={(e) => {
+                      setFormData({ ...formData, partySize: parseInt(e.target.value), time: '' });
+                    }}
                     className="w-full border-2 rounded-lg px-4 py-3 text-lg"
                     required
                   >
-                    <option value="">Select a time</option>
-                    {timeSlots.map(time => (
-                      <option key={time} value={time}>
-                        {formatTime(time)}
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(size => (
+                      <option key={size} value={size}>
+                        {size} {size === 1 ? 'Guest' : 'Guests'}
                       </option>
                     ))}
                   </select>
@@ -208,27 +249,50 @@ export default function ReservationForm() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Party Size *
+                    Time *
                   </label>
-                  <select
-                    value={formData.partySize}
-                    onChange={(e) => setFormData({ ...formData, partySize: parseInt(e.target.value) })}
-                    className="w-full border-2 rounded-lg px-4 py-3 text-lg"
-                    required
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20].map(size => (
-                      <option key={size} value={size}>
-                        {size} {size === 1 ? 'person' : 'people'}
-                      </option>
-                    ))}
-                  </select>
+                  
+                  {!formData.date ? (
+                    <div className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-gray-400 bg-gray-50">
+                      Please select a date first
+                    </div>
+                  ) : loadingTimeSlots ? (
+                    <div className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 text-gray-600 bg-gray-50 flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                      Checking availability...
+                    </div>
+                  ) : availableTimeSlots.length === 0 ? (
+                    <div className="w-full border-2 border-red-200 rounded-lg px-4 py-3 text-red-600 bg-red-50">
+                      😔 No time slots available for {formData.partySize} guests on this date. Try a different date or party size.
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={formData.time}
+                        onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                        className="w-full border-2 rounded-lg px-4 py-3 text-lg"
+                        required
+                      >
+                        <option value="">Select a time</option>
+                        {availableTimeSlots.map(time => (
+                          <option key={time} value={time}>
+                            {formatTime(time)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-sm text-green-600 mt-1">
+                        ✓ {availableTimeSlots.length} time slot{availableTimeSlots.length !== 1 ? 's' : ''} available
+                      </p>
+                    </>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-indigo-600 text-white text-lg font-semibold rounded-lg hover:bg-indigo-700"
+                  disabled={!formData.date || !formData.time || loadingTimeSlots}
+                  className="w-full py-4 bg-indigo-600 text-white text-lg font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Find Available Tables →
+                  Continue to Table Selection →
                 </button>
               </form>
             </div>
@@ -429,3 +493,4 @@ export default function ReservationForm() {
     </div>
   );
 }
+
