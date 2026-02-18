@@ -4,7 +4,11 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 
+
+import TableAvailabilityModal from '../../components/TableAvailabilityModal';
+
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
+
 
 const tablesAPI = {
   getAll: () => fetch(`${API_URL}/api/tables`, {
@@ -68,6 +72,7 @@ export default function TablesManagement() {
   const [editingTable, setEditingTable] = useState<any>(null);
   const [filterLocation, setFilterLocation] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [availabilityTable, setAvailabilityTable] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     tableNumber: '',
@@ -385,6 +390,13 @@ export default function TablesManagement() {
                   >
                     📱
                   </button>
+		  <button
+                    onClick={() => setAvailabilityTable(table)}
+                    className="px-3 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
+                    title="View Availability"
+                  >
+                    📅
+                  </button>
                   <button
                     onClick={() => handleDelete(table.id)}
                     className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
@@ -509,6 +521,13 @@ export default function TablesManagement() {
             </div>
           </div>
         </div>
+      )}
+       {/* Availability Modal */}
+      {availabilityTable && (
+        <TableAvailabilityModal
+          table={availabilityTable}
+          onClose={() => setAvailabilityTable(null)}
+        />
       )}
     </div>
   );

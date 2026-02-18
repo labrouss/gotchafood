@@ -12,6 +12,8 @@ import {
   getFloorPlan,
 } from '../controllers/tables.controller';
 
+import { getTableAvailability } from '../controllers/tables.controller';
+
 const router = Router();
 
 // Public routes
@@ -31,5 +33,6 @@ router.post('/:id/qr', authorize('ADMIN'), generateTableQR);
 router.get('/', authorize('ADMIN', 'STAFF'), getAllTables);
 router.get('/:id', authorize('ADMIN', 'STAFF'), getTableById);
 router.patch('/:id/status', authorize('ADMIN', 'STAFF'), updateTableStatus);
+router.get('/:id/availability', authenticate, getTableAvailability);
 
 export default router;
