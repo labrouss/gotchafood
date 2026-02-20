@@ -214,10 +214,10 @@ export default function LoyaltyTiers() {
           <p className="text-gray-600 mb-4">Initialize default tiers to get started</p>
           <button
             onClick={() => {
-              console.log('[DEBUG] LoyaltyTiers: Initializing defaults...');
+
               loyaltyTiersAPI.initialize()
                 .then((response) => {
-                  console.log('[DEBUG] LoyaltyTiers: Initialization success:', response);
+
                   queryClient.invalidateQueries({ queryKey: ['loyaltyTiers'] });
                   addToast('Default tiers initialized!');
                 })

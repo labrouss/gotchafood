@@ -16,13 +16,13 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
     
-    console.log('🖼️ resolveImageUrl:', { url, hostname, protocol });
+
     
     // If we're NOT on localhost, construct backend URL from current hostname
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
       const backendUrl = `${protocol}//${hostname}:3000`;
       const resolved = `${backendUrl}${url}`;
-      console.log('   ✓ Resolved to:', resolved);
+
       return resolved;
     }
   }
@@ -30,7 +30,7 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
   // Default: use env variable
   const backendBase = apiUrl.replace('/api', '');
   const resolved = `${backendBase}${url}`;
-  console.log('   ✓ Using env fallback:', resolved);
+
   return resolved;
 }
 

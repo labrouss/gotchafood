@@ -12,7 +12,7 @@ export const getAllSettings = async (req: Request, res: Response, next: NextFunc
       orderBy: [{ category: 'asc' }, { label: 'asc' }],
     });
 
-    console.log(`[DEBUG] getAllSettings: Found ${settings.length} settings.`);
+
 
     // Group by category
     const grouped = settings.reduce((acc: any, setting) => {
@@ -110,7 +110,7 @@ export const bulkUpdateSettings = async (req: Request, res: Response, next: Next
 // ── Initialize default settings (run once or on-demand) ───────────────────
 export const initializeDefaults = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log('[DEBUG] initializeDefaults: Starting initialization...');
+
     const defaults = [
       // Loyalty settings
       { key: 'loyalty.min_order_for_points', value: '10', category: 'loyalty', label: 'Minimum Order for Points (€)', dataType: 'number' },
@@ -132,15 +132,15 @@ export const initializeDefaults = async (req: Request, res: Response, next: Next
     for (const setting of defaults) {
       const existing = await prisma.storeSettings.findUnique({ where: { key: setting.key } });
       if (!existing) {
-        console.log(`[DEBUG] Creating setting: ${setting.key}`);
+
         const newSetting = await prisma.storeSettings.create({ data: setting });
         created.push(newSetting);
       } else {
-        console.log(`[DEBUG] Setting already exists: ${setting.key}`);
+
       }
     }
 
-    console.log(`[DEBUG] initializeDefaults: Created ${created.length} new settings.`);
+
 
     res.json({ success: true, data: { created: created.length, message: `${created.length} default settings initialized` } });
   } catch (error) {

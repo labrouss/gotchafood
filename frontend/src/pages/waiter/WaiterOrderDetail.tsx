@@ -20,8 +20,8 @@ const orderAPI = {
   getOrder: (id: string) => fetch(`${API_URL}/api/orders/${id}`, {
     headers: getAuthHeader()
   }).then(r => r.json()),
-  
-  markServed: (id: string) => fetch(`${API_URL}/api/orders/${id}/status`, {
+
+  markServed: (id: string) => fetch(`${API_URL}/api/admin/orders/${id}/status`, {
     method: 'PATCH',
     headers: getAuthHeader(),
     body: JSON.stringify({ status: 'SERVED' })
@@ -40,6 +40,19 @@ export default function WaiterOrderDetail() {
     enabled: !!orderId,
   });
 
+
+  const serveMutation = useMutation({
+    mutationFn: () => orderAPI.markServed(orderId!),
+    onSuccess: () => {
+      addToast('Order marked as served!');
+      queryClient.invalidateQueries({ queryKey: ['order', orderId] });
+      // Optionally navigate back after serving
+      // navigate('/waiter');
+    },
+    onError: (error: any) => {
+      addToast(error.message || 'Failed to update order status');
+    }
+  });
 
   if (isLoading) {
     return (

@@ -242,15 +242,15 @@ export const endTableSession = async (req: Request, res: Response, next: NextFun
 
     // Update table status back to available
     // Update table status back to available
-     try {
-       await prisma.table.update({
-         where: { id: session.tableId },
-         data: { status: 'AVAILABLE' },
-       });
-       console.log(`✅ Table freed: ${session.tableId}`);
-     } catch (error) {
-       console.error('❌ Table update failed:', error);
-     }
+    try {
+      await prisma.table.update({
+        where: { id: session.tableId },
+        data: { status: 'AVAILABLE' },
+      });
+
+    } catch (error) {
+      console.error('❌ Table update failed:', error);
+    }
 
     // Update reservation if exists
     if (session.reservationId) {
@@ -301,11 +301,11 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
 
     // Generate order number
     const orderCount = await prisma.order.count({
-    where: {
-    orderNumber: { startsWith: 'WTR-' },
-  },		       
+      where: {
+        orderNumber: { startsWith: 'WTR-' },
+      },
     });
-    const orderNumber = `WTR=${String(orderCount + 1).padStart(6, '0')}`;
+    const orderNumber = `WTR-${String(orderCount + 1).padStart(6, '0')}`;
 
     // Create order
     const order = await prisma.order.create({
@@ -372,9 +372,9 @@ export const markOrderServed = async (req: Request, res: Response, next: NextFun
     }
 
     if (order.status !== 'READY') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Can only mark READY orders as served' 
+      return res.status(400).json({
+        success: false,
+        message: 'Can only mark READY orders as served'
       });
     }
 
@@ -528,7 +528,7 @@ export const getMyShifts = async (req: Request, res: Response, next: NextFunctio
     const { startDate, endDate } = req.query;
 
     const where: any = { waiterId };
-    
+
     if (startDate && endDate) {
       where.shiftDate = {
         gte: new Date(startDate as string),
@@ -663,13 +663,13 @@ export const getWaiterStats = async (req: Request, res: Response, next: NextFunc
     const stats = {
       totalSessions: sessions.length,
       totalRevenue: sessions.reduce((sum, s) => sum + Number(s.totalSpent), 0),
-      averageSessionTime: sessions.length > 0 
+      averageSessionTime: sessions.length > 0
         ? sessions.reduce((sum, s) => {
-            const duration = s.endedAt && s.startedAt
-              ? (s.endedAt.getTime() - s.startedAt.getTime()) / (1000 * 60)
-              : 0;
-            return sum + duration;
-          }, 0) / sessions.length
+          const duration = s.endedAt && s.startedAt
+            ? (s.endedAt.getTime() - s.startedAt.getTime()) / (1000 * 60)
+            : 0;
+          return sum + duration;
+        }, 0) / sessions.length
         : 0,
       totalOrders: sessions.reduce((sum, s) => sum + s.orders.length, 0),
     };

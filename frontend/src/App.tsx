@@ -91,8 +91,8 @@ function AppContent() {
                     <Link to="/my-orders" className="hover:text-yellow-300 transition">
                       Παραγγελίες μου
                     </Link>
-		    <Link to="/my-reservations" className="hover:text-yellow-300 transition">
-                    📅 Κρατήσεις μου
+                    <Link to="/my-reservations" className="hover:text-yellow-300 transition">
+                      📅 Κρατήσεις μου
                     </Link>
                     <Link to="/cart" className="hover:text-yellow-300 transition relative">
                       🛒 Καλάθι
@@ -104,12 +104,12 @@ function AppContent() {
                     </Link>
                   </>
                 )}
-		 
-               {user && user.role === 'STAFF' && (
-                 <Link to="/waiter" className="hover:text-yellow-300 transition font-semibold">
-                   👔 Τα Τραπέζια μου
-                 </Link>
-               )}
+
+                {user && user.role === 'STAFF' && (
+                  <Link to="/waiter" className="hover:text-yellow-300 transition font-semibold">
+                    👔 Τα Τραπέζια μου
+                  </Link>
+                )}
 
 
                 {isAdmin && (
@@ -118,13 +118,13 @@ function AppContent() {
                       ⚙️ Admin
                     </button>
                     <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-		       <Link to="/admin/tables" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
-                         🍽️ Τραπέζια
-                       </Link>
-                       <Link to="/admin/reservations" className="block px-4 py-2 hover:bg-gray-100">
-                         📅 Κρατήσεις
-                       </Link>
-                       <div className="border-t border-gray-200"></div>
+                      <Link to="/admin/tables-management" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
+                        🍽️ Τραπέζια
+                      </Link>
+                      <Link to="/admin/reservations" className="block px-4 py-2 hover:bg-gray-100">
+                        📅 Κρατήσεις
+                      </Link>
+                      <div className="border-t border-gray-200"></div>
 
                       <Link to="/admin/insights" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
                         📈 Insights
@@ -214,7 +214,7 @@ function AppContent() {
                   </>
                 ) : (
                   <>
-		    <Link to="/reserve" className="hover:text-yellow-300 transition">
+                    <Link to="/reserve" className="hover:text-yellow-300 transition">
                       📅 Κράτηση
                     </Link>
                     <Link
@@ -274,14 +274,14 @@ function AppContent() {
 
           {/* Loyalty Route */}
           <Route path="/loyalty" element={<LoyaltyPage />} />
-	  {/* Waiter and Tables Route */}
-	  <Route path="/admin/tables" element={<TablesManagement />} />
+          {/* Waiter and Tables Route */}
+          <Route path="/admin/tables-management" element={<TablesManagement />} />
           <Route path="/admin/reservations" element={<ReservationsCalendar />} />
           <Route path="/waiter" element={<WaiterDashboard />} />
           <Route path="/waiter/take-order/:sessionId" element={<TakeOrder />} />
-	  <Route path="/waiter/order/:orderId" element={<WaiterOrderDetail />} /> 
+          <Route path="/waiter/order/:orderId" element={<WaiterOrderDetail />} />
           <Route path="/reserve" element={<ReservationForm />} />
-          <Route path="/my-reservations" element={<MyReservations />} /> 
+          <Route path="/my-reservations" element={<MyReservations />} />
 
         </Routes>
 

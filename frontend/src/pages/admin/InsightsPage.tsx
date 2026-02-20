@@ -5,8 +5,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
 const PERIOD_OPTIONS = [
-  { label: 'Today',    value: 1  },
-  { label: '7 days',  value: 7  },
+  { label: 'Today', value: 1 },
+  { label: '7 days', value: 7 },
   { label: '30 days', value: 30 },
   { label: '90 days', value: 90 },
 ];
@@ -14,12 +14,12 @@ const PERIOD_OPTIONS = [
 // ── small helpers ──────────────────────────────────────────────────────────
 const StatCard = ({ icon, label, value, sub, color = 'blue' }: any) => {
   const colors: any = {
-    blue:   'border-blue-500   bg-blue-50   text-blue-700',
-    green:  'border-green-500  bg-green-50  text-green-700',
+    blue: 'border-blue-500   bg-blue-50   text-blue-700',
+    green: 'border-green-500  bg-green-50  text-green-700',
     orange: 'border-orange-500 bg-orange-50 text-orange-700',
-    red:    'border-red-500    bg-red-50    text-red-700',
+    red: 'border-red-500    bg-red-50    text-red-700',
     purple: 'border-purple-500 bg-purple-50 text-purple-700',
-    gray:   'border-gray-400   bg-gray-50   text-gray-700',
+    gray: 'border-gray-400   bg-gray-50   text-gray-700',
   };
   return (
     <div className={`rounded-xl border-l-4 p-5 shadow-sm ${colors[color]}`}>
@@ -52,9 +52,9 @@ const Badge = ({ text, color }: { text: string; color: string }) => (
 
 const speedBadge = (val: number | null, good: number, bad: number) => {
   if (val === null) return <Badge text="No data" color="bg-gray-200 text-gray-600" />;
-  if (val <= good)  return <Badge text={`${val} min ✓`} color="bg-green-100 text-green-800" />;
-  if (val <= bad)   return <Badge text={`${val} min ⚠`} color="bg-yellow-100 text-yellow-800" />;
-  return              <Badge text={`${val} min ✗`}  color="bg-red-100 text-red-800" />;
+  if (val <= good) return <Badge text={`${val} min ✓`} color="bg-green-100 text-green-800" />;
+  if (val <= bad) return <Badge text={`${val} min ⚠`} color="bg-yellow-100 text-yellow-800" />;
+  return <Badge text={`${val} min ✗`} color="bg-red-100 text-red-800" />;
 };
 
 // ── mini bar chart using divs ───────────────────────────────────────────────
@@ -81,7 +81,7 @@ const MiniBarChart = ({ data, valueKey, labelKey, color, maxLabel = '' }: any) =
 // ── main page ─────────────────────────────────────────────────────────────
 export default function InsightsPage() {
   const navigate = useNavigate();
-  const user     = useAuthStore(s => s.user);
+  const user = useAuthStore(s => s.user);
   const [days, setDays] = useState(7);
   const [staffTab, setStaffTab] = useState<'overview' | 'confirm' | 'prep' | 'delivery'>('overview');
 
@@ -112,9 +112,8 @@ export default function InsightsPage() {
             <button
               key={p.value}
               onClick={() => setDays(p.value)}
-              className={`px-4 py-1.5 rounded-lg font-semibold text-sm transition ${
-                days === p.value ? 'bg-white text-indigo-700' : 'bg-white/20 hover:bg-white/30'
-              }`}
+              className={`px-4 py-1.5 rounded-lg font-semibold text-sm transition ${days === p.value ? 'bg-white text-indigo-700' : 'bg-white/20 hover:bg-white/30'
+                }`}
             >
               {p.label}
             </button>
@@ -139,11 +138,11 @@ export default function InsightsPage() {
 
           {/* ══ SUMMARY ROW ══════════════════════════════════════════════ */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <StatCard icon="📦" label="Total Orders"     value={d.summary.totalOrders}    color="blue"   />
-            <StatCard icon="✅" label="Delivered"         value={d.summary.deliveredCount}  color="green"  sub={`of ${d.summary.totalOrders}`} />
-            <StatCard icon="❌" label="Cancelled"         value={d.summary.cancelledCount}  color="red"    />
-            <StatCard icon="💰" label="Revenue"           value={`€${d.summary.totalRevenue}`} color="purple" />
-            <StatCard icon="⏱️" label="Avg Total Time"    value={d.timing.avgTotalMin != null ? `${d.timing.avgTotalMin} min` : null} color="orange" />
+            <StatCard icon="📦" label="Total Orders" value={d.summary.totalOrders} color="blue" />
+            <StatCard icon="✅" label="Delivered" value={d.summary.deliveredCount} color="green" sub={`of ${d.summary.totalOrders}`} />
+            <StatCard icon="❌" label="Cancelled" value={d.summary.cancelledCount} color="red" />
+            <StatCard icon="💰" label="Revenue" value={`€${d.summary.totalRevenue}`} color="purple" />
+            <StatCard icon="⏱️" label="Avg Total Time" value={d.timing.avgTotalMin != null ? `${d.timing.avgTotalMin} min` : null} color="orange" />
           </div>
 
           {/* ══ TIMING PATTERNS ═════════════════════════════════════════ */}
@@ -221,8 +220,8 @@ export default function InsightsPage() {
               </div>
             </div>
 
-	    {/* Waiter */}
-	    <div className="bg-purple-50 rounded-lg shadow p-4">
+            {/* Waiter */}
+            <div className="bg-purple-50 rounded-lg shadow p-4">
               <div className="text-purple-600 text-sm">Waiter Orders Revenue</div>
               <div className="text-2xl font-bold text-purple-700">
                 €{data?.data?.waiterRevenue?.toFixed(2) || '0.00'}
@@ -275,8 +274,8 @@ export default function InsightsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               {[
                 { label: 'Slow Confirmations', rate: d.bottlenecks.slowConfirmRate, count: d.bottlenecks.slowConfirmCount, desc: '> 5 min to confirm', icon: '✅' },
-                { label: 'Slow Preparations',  rate: d.bottlenecks.slowPrepRate,     count: d.bottlenecks.slowPrepCount,    desc: '> 25 min to prepare', icon: '🍳' },
-                { label: 'Slow Deliveries',    rate: d.bottlenecks.slowDeliveryRate, count: d.bottlenecks.slowDeliveryCount, desc: '> 20 min to deliver', icon: '🚗' },
+                { label: 'Slow Preparations', rate: d.bottlenecks.slowPrepRate, count: d.bottlenecks.slowPrepCount, desc: '> 25 min to prepare', icon: '🍳' },
+                { label: 'Slow Deliveries', rate: d.bottlenecks.slowDeliveryRate, count: d.bottlenecks.slowDeliveryCount, desc: '> 20 min to deliver', icon: '🚗' },
               ].map(b => (
                 <div key={b.label} className={`rounded-xl p-4 border-2 ${b.rate > 30 ? 'border-red-300 bg-red-50' : b.rate > 15 ? 'border-yellow-300 bg-yellow-50' : 'border-green-300 bg-green-50'}`}>
                   <div className="flex items-center justify-between mb-2">
@@ -320,15 +319,14 @@ export default function InsightsPage() {
 
             {/* tabs */}
             <div className="flex gap-2 mb-6 border-b">
-              {(['overview','confirm','prep','delivery'] as const).map(tab => (
+              {(['overview', 'confirm', 'prep', 'delivery'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setStaffTab(tab)}
-                  className={`px-4 py-2 font-semibold text-sm border-b-2 transition -mb-px ${
-                    staffTab === tab ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`px-4 py-2 font-semibold text-sm border-b-2 transition -mb-px ${staffTab === tab ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
                 >
-                  {{ overview:'Overview', confirm:'Fastest Confirmer', prep:'Best Preparer', delivery:'Quickest Deliverer' }[tab]}
+                  {{ overview: 'Overview', confirm: 'Fastest Confirmer', prep: 'Best Preparer', delivery: 'Quickest Deliverer' }[tab]}
                 </button>
               ))}
             </div>
@@ -384,7 +382,7 @@ export default function InsightsPage() {
                       .sort((a: any, b: any) => (a.avgConfirmTime ?? 999) - (b.avgConfirmTime ?? 999))
                       .map((s: any, i: number) => (
                         <div key={s.id} className={`flex items-center gap-3 p-3 rounded-lg ${i === 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
-                          <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</div>
+                          <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</div>
                           <div className="flex-1">
                             <div className="font-semibold">{s.name}</div>
                             <div className="text-xs text-gray-500">{s.confirmCount} confirmations</div>
@@ -404,7 +402,7 @@ export default function InsightsPage() {
                       .sort((a: any, b: any) => (a.avgItemPrepTime ?? 999) - (b.avgItemPrepTime ?? 999))
                       .map((s: any, i: number) => (
                         <div key={s.id} className={`flex items-center gap-3 p-3 rounded-lg ${i === 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
-                          <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</div>
+                          <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</div>
                           <div className="flex-1">
                             <div className="font-semibold">{s.name}</div>
                             <div className="text-xs text-gray-500">{s.itemCount} items prepared</div>
@@ -424,7 +422,7 @@ export default function InsightsPage() {
                       .sort((a: any, b: any) => (a.avgDeliveryTime ?? 999) - (b.avgDeliveryTime ?? 999))
                       .map((s: any, i: number) => (
                         <div key={s.id} className={`flex items-center gap-3 p-3 rounded-lg ${i === 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-gray-50'}`}>
-                          <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}</div>
+                          <div className="text-2xl">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</div>
                           <div className="flex-1">
                             <div className="font-semibold">{s.name}</div>
                             <div className="text-xs text-gray-500">{s.deliveryCount} deliveries · €{
@@ -474,6 +472,7 @@ export default function InsightsPage() {
                     <th className="pb-2 pr-4 text-right">Orders</th>
                     <th className="pb-2 pr-4 text-right">Delivered</th>
                     <th className="pb-2 pr-4 text-right">Revenue</th>
+                    <th className="pb-2 pr-4 text-right">Waiter Revenue</th>
                     <th className="pb-2 text-right">Avg Time</th>
                   </tr>
                 </thead>
@@ -484,6 +483,10 @@ export default function InsightsPage() {
                       <td className="py-2 pr-4 text-right">{day.orders}</td>
                       <td className="py-2 pr-4 text-right">{day.delivered}</td>
                       <td className="py-2 pr-4 text-right font-semibold text-green-700">€{day.revenue.toFixed(2)}</td>
+                      <td className="py-2 pr-4 text-right text-purple-700">
+                        €{day.waiterRevenue?.toFixed(2) || '0.00'}
+                        <div className="text-xs text-gray-500">{day.waiterOrders || 0} orders</div>
+                      </td>
                       <td className="py-2 text-right">{day.avgMin != null ? `${day.avgMin} min` : '—'}</td>
                     </tr>
                   ))}
@@ -503,14 +506,14 @@ export default function InsightsPage() {
                   const intensity = h.orders / maxOrders;
                   const bg = intensity === 0 ? 'bg-gray-100'
                     : intensity < 0.25 ? 'bg-orange-100'
-                    : intensity < 0.5  ? 'bg-orange-300'
-                    : intensity < 0.75 ? 'bg-orange-500'
-                    : 'bg-red-600';
+                      : intensity < 0.5 ? 'bg-orange-300'
+                        : intensity < 0.75 ? 'bg-orange-500'
+                          : 'bg-red-600';
                   const text = intensity >= 0.5 ? 'text-white' : 'text-gray-700';
                   return (
                     <div key={h.hour} className="flex flex-col items-center gap-1">
                       <div className={`w-12 rounded-lg flex flex-col items-center justify-center py-3 ${bg} ${text}`}
-                           style={{ minHeight: '64px' }}>
+                        style={{ minHeight: '64px' }}>
                         <div className="text-lg font-bold">{h.orders}</div>
                         {h.avgMin && <div className="text-xs opacity-80">{h.avgMin}m</div>}
                       </div>

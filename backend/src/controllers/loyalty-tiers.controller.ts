@@ -11,7 +11,7 @@ export const getAllTiers = async (req: Request, res: Response, next: NextFunctio
     const tiers = await prisma.loyaltyTier.findMany({
       orderBy: { sortOrder: 'asc' },
     });
-    console.log(`[DEBUG] getAllTiers: Found ${tiers.length} tiers.`);
+
     res.json({ success: true, data: { tiers } });
   } catch (error) {
     console.error('[DEBUG] getAllTiers Error:', error);
@@ -104,7 +104,7 @@ export const deleteTier = async (req: Request, res: Response, next: NextFunction
 // ── Initialize default tiers ──────────────────────────────────────────────
 export const initializeDefaultTiers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log('[DEBUG] initializeDefaultTiers: Starting initialization...');
+
     const defaults = [
       { name: 'Bronze', minPoints: 0, maxPoints: 499, color: '#cd7f32', icon: '🥉', discount: 0, pointsMultiplier: 1.0, sortOrder: 1 },
       { name: 'Silver', minPoints: 500, maxPoints: 1499, color: '#c0c0c0', icon: '🥈', discount: 5, pointsMultiplier: 1.25, sortOrder: 2 },
@@ -116,15 +116,15 @@ export const initializeDefaultTiers = async (req: Request, res: Response, next: 
     for (const tier of defaults) {
       const existing = await prisma.loyaltyTier.findUnique({ where: { name: tier.name } });
       if (!existing) {
-        console.log(`[DEBUG] Creating tier: ${tier.name}`);
+
         const newTier = await prisma.loyaltyTier.create({ data: tier });
         created.push(newTier);
       } else {
-        console.log(`[DEBUG] Tier already exists: ${tier.name}`);
+
       }
     }
 
-    console.log(`[DEBUG] initializeDefaultTiers: Created ${created.length} new tiers.`);
+
 
     res.json({ success: true, data: { created: created.length, message: `${created.length} default tiers initialized` } });
   } catch (error) {

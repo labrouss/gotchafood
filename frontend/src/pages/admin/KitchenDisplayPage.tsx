@@ -13,28 +13,28 @@ const statusColors: any = {
 };
 
 const stations = [
-  { id: 'all',      name: 'Όλα',     icon: '🏠', color: 'bg-gray-600' },
-  { id: 'kitchen',  name: 'Κουζίνα', icon: '🍳', color: 'bg-red-600' },
-  { id: 'barista',  name: 'Barista', icon: '☕', color: 'bg-amber-700' },
-  { id: 'cold-prep',name: 'Κρύα',    icon: '🥗', color: 'bg-green-600' },
-  { id: 'hot-prep', name: 'Ζεστά',   icon: '🔥', color: 'bg-orange-600' },
+  { id: 'all', name: 'Όλα', icon: '🏠', color: 'bg-gray-600' },
+  { id: 'kitchen', name: 'Κουζίνα', icon: '🍳', color: 'bg-red-600' },
+  { id: 'barista', name: 'Barista', icon: '☕', color: 'bg-amber-700' },
+  { id: 'cold-prep', name: 'Κρύα', icon: '🥗', color: 'bg-green-600' },
+  { id: 'hot-prep', name: 'Ζεστά', icon: '🔥', color: 'bg-orange-600' },
 ];
 
 export default function KitchenDisplayPage() {
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const user        = useAuthStore((state) => state.user);
+  const user = useAuthStore((state) => state.user);
 
   const initialStation = user?.role === 'STAFF' && user?.routingRole ? user.routingRole : 'all';
   const [selectedStation, setSelectedStation] = useState(initialStation);
-  const [autoRefresh,     setAutoRefresh]     = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000);
-  const [soundEnabled,    setSoundEnabled]    = useState(true);
-  const [soundVolume,     setSoundVolume]     = useState(0.5);
-  const [viewMode,        setViewMode]        = useState<'grid' | 'list'>('grid');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundVolume, setSoundVolume] = useState(0.5);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const previousOrderCountRef = useRef(0);
-  const audioCtxRef           = useRef<AudioContext | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const isStaffLocked = user?.role === 'STAFF' && !!user?.routingRole;
 
@@ -45,8 +45,8 @@ export default function KitchenDisplayPage() {
 
   const playBeep = () => {
     if (!soundEnabled || !audioCtxRef.current) return;
-    const ctx  = audioCtxRef.current;
-    const osc  = ctx.createOscillator();
+    const ctx = audioCtxRef.current;
+    const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -84,7 +84,7 @@ export default function KitchenDisplayPage() {
   /* ── sound on new orders ── */
   useEffect(() => {
     const orders = data?.data?.orders || [];
-    const count  = orders.filter((o: any) => ['PENDING','CONFIRMED','PREPARING'].includes(o.status)).length;
+    const count = orders.filter((o: any) => ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)).length;
     if (count > previousOrderCountRef.current && previousOrderCountRef.current > 0) playBeep();
     previousOrderCountRef.current = count;
   }, [data]); // eslint-disable-line
@@ -95,18 +95,18 @@ export default function KitchenDisplayPage() {
   }
 
   /* ── derived data ── */
-  const allOrders    = data?.data?.orders || [];
-  const activeOrders = allOrders.filter((o: any) => !['DELIVERED','CANCELLED'].includes(o.status));
+  const allOrders = data?.data?.orders || [];
+  const activeOrders = allOrders.filter((o: any) => !['DELIVERED', 'CANCELLED', 'SERVED'].includes(o.status));
 
   const filteredOrders = selectedStation === 'all'
     ? activeOrders
     : activeOrders.filter((o: any) => o.items?.some((i: any) => i.station === selectedStation));
 
   const grouped = {
-    PENDING:          filteredOrders.filter((o: any) => o.status === 'PENDING'),
-    CONFIRMED:        filteredOrders.filter((o: any) => o.status === 'CONFIRMED'),
-    PREPARING:        filteredOrders.filter((o: any) => o.status === 'PREPARING'),
-    READY:            filteredOrders.filter((o: any) => o.status === 'READY'),   
+    PENDING: filteredOrders.filter((o: any) => o.status === 'PENDING'),
+    CONFIRMED: filteredOrders.filter((o: any) => o.status === 'CONFIRMED'),
+    PREPARING: filteredOrders.filter((o: any) => o.status === 'PREPARING'),
+    READY: filteredOrders.filter((o: any) => o.status === 'READY'),
     OUT_FOR_DELIVERY: filteredOrders.filter((o: any) => o.status === 'OUT_FOR_DELIVERY'),
   };
 
@@ -116,15 +116,15 @@ export default function KitchenDisplayPage() {
   const timeColor = (mins: number, est: number, extra: number) => {
     const total = est + extra;
     if (mins > total + 15) return 'text-red-600 font-bold animate-pulse';
-    if (mins > total)       return 'text-orange-500 font-semibold';
+    if (mins > total) return 'text-orange-500 font-semibold';
     return 'text-green-600';
   };
 
   /* ─────────────────────── ORDER CARD ─────────────────────── */
   const OrderCard = ({ order }: { order: any }) => {
-    const elapsed  = minSince(order.placedAt);
-    const est      = order.estimatedTime || 15;
-    const extra    = order.additionalTime || 0;
+    const elapsed = minSince(order.placedAt);
+    const est = order.estimatedTime || 15;
+    const extra = order.additionalTime || 0;
     const remaining = (est + extra) - elapsed;
 
     // Items visible to this station view
@@ -135,17 +135,16 @@ export default function KitchenDisplayPage() {
     if (visibleItems.length === 0) return null;
 
     // Progress for this station's items
-    const done    = visibleItems.filter((i: any) => !!i.completedAt).length;
+    const done = visibleItems.filter((i: any) => !!i.completedAt).length;
     const started = visibleItems.filter((i: any) => !!i.startedAt && !i.completedAt).length;
-    const total   = visibleItems.length;
+    const total = visibleItems.length;
     const allDone = done === total;
 
     return (
-      <div className={`bg-white rounded-lg shadow-lg p-4 border-l-4 ${
-        elapsed > est + extra + 15 ? 'border-red-600 ring-4 ring-red-200'
-        : elapsed > est + extra    ? 'border-orange-500'
-                                   : 'border-green-500'
-      }`}>
+      <div className={`bg-white rounded-lg shadow-lg p-4 border-l-4 ${elapsed > est + extra + 15 ? 'border-red-600 ring-4 ring-red-200'
+          : elapsed > est + extra ? 'border-orange-500'
+            : 'border-green-500'
+        }`}>
 
         {/* ── card header ── */}
         <div className="flex justify-between items-start mb-3">
@@ -186,24 +185,22 @@ export default function KitchenDisplayPage() {
         <div className="space-y-2 mb-4">
           {visibleItems.map((item: any) => {
             const isCompleted = !!item.completedAt;
-            const isStarted   = !!item.startedAt && !item.completedAt;
-            const isIdle      = !item.startedAt;
+            const isStarted = !!item.startedAt && !item.completedAt;
+            const isIdle = !item.startedAt;
 
             return (
               <div
                 key={item.id}
-                className={`rounded-lg p-3 border-2 transition ${
-                  isCompleted ? 'bg-green-50 border-green-400'
-                  : isStarted  ? 'bg-purple-50 border-purple-400'
-                               : 'bg-gray-50 border-gray-200'
-                }`}
+                className={`rounded-lg p-3 border-2 transition ${isCompleted ? 'bg-green-50 border-green-400'
+                    : isStarted ? 'bg-purple-50 border-purple-400'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   {/* item info */}
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className={`text-xl font-bold flex-shrink-0 ${
-                      isCompleted ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <span className={`text-xl font-bold flex-shrink-0 ${isCompleted ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {item.quantity}x
                     </span>
                     <div className="min-w-0">
@@ -301,7 +298,7 @@ export default function KitchenDisplayPage() {
             </div>
           )}
 
-	  {order.status === 'READY' && (
+          {order.status === 'READY' && (
             <div className="col-span-2 text-center text-sm text-green-600 font-semibold py-1">
               {order.orderNumber?.startsWith('W') ? (
                 <>👔 Ready for waiter pickup</>
@@ -359,9 +356,8 @@ export default function KitchenDisplayPage() {
                 key={s.id}
                 onClick={() => !isStaffLocked && setSelectedStation(s.id)}
                 disabled={isStaffLocked && s.id !== selectedStation}
-                className={`px-3 py-1.5 rounded-lg font-bold whitespace-nowrap text-sm flex items-center gap-1 transition ${
-                  selectedStation === s.id ? `${s.color} text-white` : 'bg-white bg-opacity-20 hover:bg-opacity-30'
-                } disabled:opacity-40 disabled:cursor-not-allowed`}
+                className={`px-3 py-1.5 rounded-lg font-bold whitespace-nowrap text-sm flex items-center gap-1 transition ${selectedStation === s.id ? `${s.color} text-white` : 'bg-white bg-opacity-20 hover:bg-opacity-30'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 <span>{s.icon}</span>
                 <span>{s.name}</span>
@@ -402,8 +398,8 @@ export default function KitchenDisplayPage() {
             )}
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setViewMode('grid')} className={`px-3 py-1 rounded text-sm ${viewMode==='grid'?'bg-red-600 text-white':'bg-gray-200'}`}>Grid</button>
-            <button onClick={() => setViewMode('list')} className={`px-3 py-1 rounded text-sm ${viewMode==='list'?'bg-red-600 text-white':'bg-gray-200'}`}>List</button>
+            <button onClick={() => setViewMode('grid')} className={`px-3 py-1 rounded text-sm ${viewMode === 'grid' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}>Grid</button>
+            <button onClick={() => setViewMode('list')} className={`px-3 py-1 rounded text-sm ${viewMode === 'list' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}>List</button>
           </div>
         </div>
       </div>
@@ -419,22 +415,22 @@ export default function KitchenDisplayPage() {
             <div className="text-6xl mb-4">✨</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">All Clear!</h2>
             <p className="text-gray-500">
-              {selectedStation === 'all' ? 'No active orders' : `No orders for ${stations.find(s=>s.id===selectedStation)?.name}`}
+              {selectedStation === 'all' ? 'No active orders' : `No orders for ${stations.find(s => s.id === selectedStation)?.name}`}
             </p>
           </div>
         ) : (
           <div className="space-y-8">
-            {(['PENDING','CONFIRMED','PREPARING','READY','OUT_FOR_DELIVERY'] as const).map(status => {
+            {(['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] as const).map(status => {
               const sOrders = grouped[status];
               if (sOrders.length === 0) return null;
               return (
                 <div key={status}>
                   <h2 className="text-lg font-bold text-gray-800 mb-3">
                     <span className={`px-3 py-1 rounded text-sm ${statusColors[status]}`}>
-                      {status.replace(/_/g,' ')} ({sOrders.length})
+                      {status.replace(/_/g, ' ')} ({sOrders.length})
                     </span>
                   </h2>
-                  <div className={viewMode==='grid'
+                  <div className={viewMode === 'grid'
                     ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
                     : 'space-y-4'
                   }>

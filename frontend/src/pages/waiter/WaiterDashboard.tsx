@@ -12,17 +12,17 @@ const waiterAPI = {
   getDashboard: () => fetch(`${API_URL}/api/waiter/dashboard`, {
     headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
   }).then(r => r.json()),
-  
+
   clockIn: () => fetch(`${API_URL}/api/waiter/clock-in`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
   }).then(r => r.json()),
-  
+
   clockOut: () => fetch(`${API_URL}/api/waiter/clock-out`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
   }).then(r => r.json()),
-  
+
   startSession: (data: any) => fetch(`${API_URL}/api/waiter/sessions`, {
     method: 'POST',
     headers: {
@@ -31,7 +31,7 @@ const waiterAPI = {
     },
     body: JSON.stringify(data)
   }).then(r => r.json()),
-  
+
   endSession: (id: string) => fetch(`${API_URL}/api/waiter/sessions/${id}/end`, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
@@ -59,6 +59,21 @@ export default function WaiterDashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  const startSessionMutation = useMutation({
+    mutationFn: (data: { tableId: string; partySize: number; notes?: string }) => waiterAPI.startSession(data),
+    onSuccess: (data) => {
+      addToast('Walk-in session started!');
+      queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+
+      if (data?.data?.session?.id) {
+        navigate(`/waiter/take-order/${data.data.session.id}`);
+      }
+    },
+    onError: (error: any) => {
+      addToast(error.message || 'Failed to start session');
+    },
+  });
+
   const clockInMutation = useMutation({
     mutationFn: waiterAPI.clockIn,
     onSuccess: () => {
@@ -82,19 +97,19 @@ export default function WaiterDashboard() {
   });
 
   const seatMutation = useMutation({
-  mutationFn: reservationsAPI.seat,
-  onSuccess: (data) => {
-    addToast('Customer seated!');
-    queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
-    
-    // Navigate to take order if session was created
-    if (data?.data?.session?.id) {
-      navigate(`/waiter/take-order/${data.data.session.id}`);
-    }
-  },
-  onError: (error: any) => {
-    addToast(error.message || 'Failed to seat customer');
-  },
+    mutationFn: reservationsAPI.seat,
+    onSuccess: (data) => {
+      addToast('Customer seated!');
+      queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+
+      // Navigate to take order if session was created
+      if (data?.data?.session?.id) {
+        navigate(`/waiter/take-order/${data.data.session.id}`);
+      }
+    },
+    onError: (error: any) => {
+      addToast(error.message || 'Failed to seat customer');
+    },
   });
 
   const endSessionMutation = useMutation({
@@ -111,10 +126,10 @@ export default function WaiterDashboard() {
   });
 
   if (!user || user.role !== 'STAFF') {
-  navigate('/');
-  return null;
+    navigate('/');
+    return null;
   }
- 
+
   const dashboard = data?.data || {};
   const sessions = dashboard.sessions || [];
   const shift = dashboard.shift;
@@ -209,18 +224,14 @@ export default function WaiterDashboard() {
                 <h3 className="text-xl font-bold mb-2">No Active Tables</h3>
                 <p className="text-gray-600">Seat customers from pending reservations or start a walk-in session</p>
 
-		 <button
-                  onClick={() => navigate('/admin/tables')}
+                <button
+                  onClick={() => {
+                    navigate('/admin/tables-management');
+                  }}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
                 >
-                  🪑 Start Walk-in Session
+                  🪑 View Tables & Start Walk-in
                 </button>
-		 <button
-                   onClick={() => navigate('/admin/tables')}
-                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                 >
-                   🪑 View Available Tables
-                 </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -228,7 +239,7 @@ export default function WaiterDashboard() {
                   <div
                     key={session.id}
                     className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer"
-                    //onClick={() => navigate(`/waiter/session/${session.id}`)}
+                  //onClick={() => navigate(`/waiter/session/${session.id}`)}
                   >
                     <div className="p-4">
                       <div className="flex justify-between items-start mb-3">
@@ -259,15 +270,15 @@ export default function WaiterDashboard() {
                             Orders ({session.orders.length})
                           </div>
                           <div className="space-y-1">
-			  {session.orders.map((order: any) => (
-                          <Link
-                            key={order.id}
-                            to={`/waiter/order/${order.id}`}
-                            className="block text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
-                          >
-                            {order.orderNumber} - {order.status} - €{Number(order.totalAmount).toFixed(2)}
-                          </Link>
-                        ))}
+                            {session.orders.map((order: any) => (
+                              <Link
+                                key={order.id}
+                                to={`/waiter/order/${order.id}`}
+                                className="block text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                              >
+                                {order.orderNumber} - {order.status} - €{Number(order.totalAmount).toFixed(2)}
+                              </Link>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -344,8 +355,8 @@ export default function WaiterDashboard() {
           </div>
         </div>
       )}
-        {/* Payment Modal */}
-        {paymentSession && (
+      {/* Payment Modal */}
+      {paymentSession && (
         <PaymentModal
           session={paymentSession}
           onConfirm={() => {

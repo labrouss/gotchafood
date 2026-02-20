@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
-import { useEffect } from 'react';  
+import { useEffect } from 'react';
 
 
 import TableAvailabilityModal from '../../components/TableAvailabilityModal';
@@ -11,13 +11,21 @@ import TableAvailabilityModal from '../../components/TableAvailabilityModal';
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
 
 
+const handleResponse = async (r: Response) => {
+  const data = await r.json();
+  if (!r.ok || data.success === false) {
+    throw new Error(data.message || 'API request failed');
+  }
+  return data;
+};
+
 const tablesAPI = {
   getAll: () => fetch(`${API_URL}/api/tables`, {
     headers: {
       'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,
       'Content-Type': 'application/json'
     }
-  }).then(r => r.json()),
+  }).then(handleResponse),
 
   create: (data: any) => fetch(`${API_URL}/api/tables`, {
     method: 'POST',
@@ -26,7 +34,7 @@ const tablesAPI = {
       'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`
     },
     body: JSON.stringify(data)
-  }).then(r => r.json()),
+  }).then(handleResponse),
 
   update: (id: string, data: any) => fetch(`${API_URL}/api/tables/${id}`, {
     method: 'PUT',
@@ -35,7 +43,7 @@ const tablesAPI = {
       'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`
     },
     body: JSON.stringify(data)
-  }).then(r => r.json()),
+  }).then(handleResponse),
 
   delete: (id: string) => fetch(`${API_URL}/api/tables/${id}`, {
     method: 'DELETE',
@@ -43,7 +51,7 @@ const tablesAPI = {
       'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,
       'Content-Type': 'application/json'
     }
-  }).then(r => r.json()),
+  }).then(handleResponse),
 
   updateStatus: (id: string, status: string) => fetch(`${API_URL}/api/tables/${id}/status`, {
     method: 'PATCH',
@@ -52,7 +60,7 @@ const tablesAPI = {
       'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`
     },
     body: JSON.stringify({ status })
-  }).then(r => r.json()),
+  }).then(handleResponse),
 
   generateQR: (id: string) => fetch(`${API_URL}/api/tables/${id}/qr`, {
     method: 'POST',
@@ -60,7 +68,7 @@ const tablesAPI = {
       'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,
       'Content-Type': 'application/json'
     }
-  }).then(r => r.json()),
+  }).then(handleResponse),
 };
 
 export default function TablesManagement() {
@@ -68,7 +76,7 @@ export default function TablesManagement() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const addToast = useToastStore((state) => state.addToast);
-  
+
   const [showModal, setShowModal] = useState(false);
   const [editingTable, setEditingTable] = useState<any>(null);
   const [filterLocation, setFilterLocation] = useState('');
@@ -76,7 +84,7 @@ export default function TablesManagement() {
   const [availabilityTable, setAvailabilityTable] = useState<any>(null);
   const [selectedTable, setSelectedTable] = useState<any>(null);
   const [showSessionModal, setShowSessionModal] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     tableNumber: '',
     capacity: 2,
@@ -88,7 +96,7 @@ export default function TablesManagement() {
   const { data, isLoading } = useQuery({
     queryKey: ['tables'],
     queryFn: tablesAPI.getAll,
-    enabled: !!user && user.role === 'ADMIN', 
+    enabled: !!user && ['ADMIN', 'STAFF'].includes(user.role),
   });
 
   const createMutation = useMutation({
@@ -146,47 +154,51 @@ export default function TablesManagement() {
   });
 
   const startSessionMutation = useMutation({
-  mutationFn: (data: { tableId: string; partySize: number; notes?: string }) =>
-    fetch(`${API_URL}/api/waiter/sessions/start`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify(data),
-    }).then(r => r.json()),
-  onSuccess: (data) => {
-    addToast('Walk-in session started!');
-    queryClient.invalidateQueries({ queryKey: ['tables'] });
-    setShowSessionModal(false);
-    
-    if (data?.data?.session?.id) {
-      navigate(`/waiter/take-order/${data.data.session.id}`);
-    }
-  },
-});
+    mutationFn: (data: { tableId: string; partySize: number; notes?: string }) =>
+      fetch(`${API_URL}/api/waiter/sessions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data),
+      }).then(r => r.json()),
+    onSuccess: (data) => {
+      addToast('Walk-in session started!');
+      queryClient.invalidateQueries({ queryKey: ['tables'] });
+      queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+
+      if (data?.data?.session?.tableId) {
+        statusMutation.mutate({ id: data.data.session.tableId, status: 'OCCUPIED' });
+      }
+
+      setShowSessionModal(false);
+
+      if (data?.data?.session?.id) {
+        navigate(`/waiter/take-order/${data.data.session.id}`);
+      }
+    },
+  });
 
   // Allow ADMIN and STAFF (waiters)
-   useEffect(() => {
-     if (!user || !['ADMIN', 'STAFF'].includes(user.role)) {
-       navigate('/');
-     }
-   }, [user, navigate]);
-   
-   // Loading state
-   if (!user) {
-     return (
-       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-       </div>
-     );
-   }
-   
-   // Block unauthorized
-   if (!['ADMIN', 'STAFF'].includes(user.role)) {
-     return null;
-   }
-   
-  // Show access denied for non-admin
-  if (user.role !== 'ADMIN', 'STAFF' ) {
-    return null; // Will redirect via useEffect
+  useEffect(() => {
+    if (!user || !['ADMIN', 'STAFF'].includes(user.role)) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Loading state
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  // Block unauthorized
+  if (!['ADMIN', 'STAFF'].includes(user.role)) {
+    return null;
   }
 
 
@@ -211,7 +223,7 @@ export default function TablesManagement() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingTable) {
       updateMutation.mutate({ id: editingTable.id, data: formData });
     } else {
@@ -433,7 +445,7 @@ export default function TablesManagement() {
                   >
                     📱
                   </button>
-		  <button
+                  <button
                     onClick={() => setAvailabilityTable(table)}
                     className="px-3 py-2 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700"
                     title="View Availability"
@@ -448,7 +460,7 @@ export default function TablesManagement() {
                     🗑️
                   </button>
                 </div>
-		   {/* Start Walk-in Session Button */}
+                {/* Start Walk-in Session Button */}
                 {table.status === 'AVAILABLE' && (
                   <button
                     onClick={() => {
@@ -568,8 +580,8 @@ export default function TablesManagement() {
                     {createMutation.isPending || updateMutation.isPending
                       ? 'Saving...'
                       : editingTable
-                      ? 'Update Table'
-                      : 'Create Table'}
+                        ? 'Update Table'
+                        : 'Create Table'}
                   </button>
                 </div>
               </form>
@@ -577,7 +589,7 @@ export default function TablesManagement() {
           </div>
         </div>
       )}
-       {/* Availability Modal */}
+      {/* Availability Modal */}
       {availabilityTable && (
         <TableAvailabilityModal
           table={availabilityTable}
@@ -659,7 +671,7 @@ export default function TablesManagement() {
           </div>
         </div>
       )}
-   
+
     </div>  // ← Final closing div
   );
 }

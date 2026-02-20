@@ -17,7 +17,6 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
         const filename = `backup-${timestamp}.json`;
         const filepath = path.join(BACKUP_DIR, filename);
 
-        // Fetch all data
         const [
             users,
             addresses,
@@ -33,7 +32,11 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
             staffProfiles,
             workShifts,
             storeSettings,
-            loyaltyTiers
+            loyaltyTiers,
+            tables,
+            tableReservations,
+            tableSessions,
+            waiterShifts
         ] = await Promise.all([
             prisma.user.findMany(),
             prisma.address.findMany(),
@@ -50,13 +53,17 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
             prisma.workShift.findMany(),
             prisma.storeSettings.findMany(),
             prisma.loyaltyTier.findMany(),
+            prisma.table.findMany(),
+            prisma.tableReservation.findMany(),
+            prisma.tableSession.findMany(),
+            prisma.waiterShift.findMany(),
         ]);
 
         const backupData = {
             meta: {
                 timestamp: new Date().toISOString(),
                 version: '1.0',
-                tables: 15
+                tables: 19
             },
             data: {
                 users,
@@ -73,7 +80,11 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
                 staffProfiles,
                 workShifts,
                 storeSettings,
-                loyaltyTiers
+                loyaltyTiers,
+                tables,
+                tableReservations,
+                tableSessions,
+                waiterShifts
             }
         };
 
@@ -141,7 +152,11 @@ export const restoreBackup = async (req: Request, res: Response, next: NextFunct
             await tx.payment.deleteMany();
             await tx.orderItem.deleteMany();
             await tx.order.deleteMany(); // Deletes associated items via Cascade if configured, but explicit is safer
+            await tx.tableSession.deleteMany();
+            await tx.tableReservation.deleteMany();
+            await tx.table.deleteMany();
             await tx.productImage.deleteMany();
+            await tx.waiterShift.deleteMany();
             await tx.workShift.deleteMany();
             await tx.staffProfile.deleteMany(); // Depends on User
             await tx.address.deleteMany(); // Depends on User
@@ -159,6 +174,7 @@ export const restoreBackup = async (req: Request, res: Response, next: NextFunct
             if (data.storeSettings?.length) await tx.storeSettings.createMany({ data: data.storeSettings });
             if (data.loyaltyTiers?.length) await tx.loyaltyTier.createMany({ data: data.loyaltyTiers });
             if (data.categories?.length) await tx.category.createMany({ data: data.categories });
+            if (data.tables?.length) await tx.table.createMany({ data: data.tables });
 
             // Dependent tables
             if (data.menuItems?.length) await tx.menuItem.createMany({ data: data.menuItems });
@@ -166,6 +182,9 @@ export const restoreBackup = async (req: Request, res: Response, next: NextFunct
             if (data.addresses?.length) await tx.address.createMany({ data: data.addresses });
             if (data.staffProfiles?.length) await tx.staffProfile.createMany({ data: data.staffProfiles });
             if (data.workShifts?.length) await tx.workShift.createMany({ data: data.workShifts });
+            if (data.waiterShifts?.length) await tx.waiterShift.createMany({ data: data.waiterShifts });
+            if (data.tableReservations?.length) await tx.tableReservation.createMany({ data: data.tableReservations });
+            if (data.tableSessions?.length) await tx.tableSession.createMany({ data: data.tableSessions });
 
             // Orders & dependent
             if (data.orders?.length) await tx.order.createMany({ data: data.orders });

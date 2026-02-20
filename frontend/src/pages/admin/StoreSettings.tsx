@@ -312,10 +312,10 @@ export default function StoreSettings() {
           <p className="text-gray-600 mb-4">Initialize default settings to get started</p>
           <button
             onClick={() => {
-              console.log('[DEBUG] StoreSettings: Initializing defaults...');
+
               settingsAPI.initialize()
                 .then((response) => {
-                  console.log('[DEBUG] StoreSettings: Initialization success:', response);
+
                   queryClient.invalidateQueries({ queryKey: ['storeSettings'] });
                   addToast('Default settings initialized!');
                 })

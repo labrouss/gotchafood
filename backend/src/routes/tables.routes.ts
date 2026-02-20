@@ -23,11 +23,11 @@ router.get('/floor-plan', getFloorPlan); // For display screens
 // Protected routes
 router.use(authenticate);
 
-// Admin only
-router.post('/', authorize('ADMIN'), createTable);
-router.put('/:id', authorize('ADMIN'), updateTable);
-router.delete('/:id', authorize('ADMIN'), deleteTable);
-router.post('/:id/qr', authorize('ADMIN'), generateTableQR);
+// Admin and Staff
+router.post('/', authorize('ADMIN', 'STAFF'), createTable);
+router.put('/:id', authorize('ADMIN', 'STAFF'), updateTable);
+router.delete('/:id', authorize('ADMIN', 'STAFF'), deleteTable);
+router.post('/:id/qr', authorize('ADMIN', 'STAFF'), generateTableQR);
 
 // Admin and Staff
 router.get('/', authorize('ADMIN', 'STAFF'), getAllTables);

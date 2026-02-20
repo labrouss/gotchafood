@@ -33,7 +33,7 @@ export const getDashboardStats = async (
       }),
       prisma.order.aggregate({
         _sum: { totalAmount: true },
-        where: { 
+        where: {
           createdAt: { gte: today },
           status: { not: 'CANCELLED' }
         },
@@ -585,7 +585,7 @@ export const updateOrderStatus = async (
         'CONFIRMED',
         'PREPARING',
         'READY',
-	'SERVED',
+        'SERVED',
         'OUT_FOR_DELIVERY',
         'DELIVERED',
         'CANCELLED',
@@ -628,8 +628,9 @@ export const updateOrderStatus = async (
         if (userId) timestampUpdates.readyBy = userId;
         break;
       case 'SERVED':
-        timestampUpdates.servedAt = new Date();
-        if (userId) timestampUpdates.servedBy = userId;
+        timestampUpdates.deliveredAt = new Date();
+        if (userId) timestampUpdates.deliveredBy = userId;
+        timestampUpdates.completedAt = new Date();
         break;
       case 'OUT_FOR_DELIVERY':
         timestampUpdates.readyAt = new Date();
@@ -662,7 +663,7 @@ export const updateOrderStatus = async (
       }
     }
 
-   // Auto-advance to READY when all items done (for waiter orders)
+    // Auto-advance to READY or OUT_FOR_DELIVERY when all items done
     if (status === 'PREPARING') {
       const allItemsDone = await prisma.orderItem.count({
         where: {
@@ -674,12 +675,12 @@ export const updateOrderStatus = async (
       if (allItemsDone) {
         const order = await prisma.order.findUnique({
           where: { id },
-          select: { orderNumber: true },
+          select: { orderNumber: true, orderType: true },
         });
 
-        // Waiter orders → READY
-        // Other orders → OUT_FOR_DELIVERY
-        if (order?.orderNumber.startsWith('WTR-')) {
+        // Waiter orders and Counter orders → READY
+        // Online/Delivery orders → OUT_FOR_DELIVERY
+        if (order?.orderNumber?.startsWith('WTR-') || order?.orderType === 'COUNTER' || order?.orderNumber?.startsWith('CNT-')) {
           timestampUpdates.status = 'READY';
           timestampUpdates.readyAt = new Date();
         } else {
@@ -759,7 +760,7 @@ async function awardLoyaltyPoints(orderId: string) {
     // Check for tier upgrade
     let newTier = loyalty.tier;
     const totalPoints = loyalty.lifetimePoints + points;
-    
+
     if (totalPoints >= 500) newTier = 'platinum';
     else if (totalPoints >= 200) newTier = 'gold';
     else if (totalPoints >= 100) newTier = 'silver';
@@ -843,20 +844,20 @@ export const updateOrderItemStatus = async (
       if (allDone && (item.order.status === 'PREPARING' || item.order.status === 'CONFIRMED')) {
         // Check order type: Waiter orders → READY, Others → OUT_FOR_DELIVERY
         const isWaiterOrder = item.order.orderNumber?.startsWith('WTR-');
-        
+
         const updateData: any = {
           status: isWaiterOrder ? 'READY' : 'OUT_FOR_DELIVERY',
           readyAt: new Date(),
         };
-        
+
         if (userId) {
           updateData.readyBy = userId;
         }
-        
+
         if (!isWaiterOrder) {
           updateData.outForDeliveryAt = new Date();
         }
-        
+
         await prisma.order.update({
           where: { id: item.orderId },
           data: updateData,
