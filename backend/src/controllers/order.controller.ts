@@ -86,7 +86,7 @@ export const createOrder = async (
     const totalAmount = subtotal + deliveryFee;
 
     // Generate unique order number
-    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const orderNumber = `ONL-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
     // Create order with transaction
     const order = await prisma.$transaction(async (tx) => {

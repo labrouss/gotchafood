@@ -14,6 +14,15 @@ import {
   addItemsToOrder
 } from '../controllers/waiter.controller';
 
+import {
+  // ... existing imports
+  getAvailableTables,  // ADD THIS
+} from '../controllers/waiter.controller';
+import {
+  // ... existing imports
+  markOrderServed,  // ADD THIS
+} from '../controllers/waiter.controller';
+
 const router = Router();
 
 // All routes require authentication
@@ -22,6 +31,10 @@ router.use(authorize('ADMIN', 'STAFF'));
 
 // Waiter Dashboard
 router.get('/dashboard', getWaiterDashboard);
+// Get available tables
+router.get('/available-tables', authenticate, getAvailableTables);
+// Mark order as served
+router.patch('/:sessionId/orders/:orderId/served', authenticate, markOrderServed);
 
 // Table Sessions
 router.get('/sessions', getActiveSessions);

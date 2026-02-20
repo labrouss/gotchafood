@@ -284,13 +284,6 @@ export default function TakeOrder() {
                 onClick={() => addToCart(item)}
                 className="bg-white rounded-lg shadow hover:shadow-lg transition p-4 text-left"
               >
-                {item.imageUrl && (
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-full h-32 object-cover rounded-lg mb-3"
-                  />
-                )}
                 <h3 className="font-bold text-sm mb-1 line-clamp-2">{item.name}</h3>
                 {item.description && (
                   <p className="text-xs text-gray-600 mb-2 line-clamp-1">

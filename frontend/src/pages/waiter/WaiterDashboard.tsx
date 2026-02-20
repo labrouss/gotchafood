@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 import { Link } from 'react-router-dom';
+import PaymentModal from '../../components/PaymentModal';
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000';
 
@@ -48,6 +50,7 @@ export default function WaiterDashboard() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const addToast = useToastStore((state) => state.addToast);
+  const [paymentSession, setPaymentSession] = useState<any>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['waiterDashboard'],
@@ -79,18 +82,31 @@ export default function WaiterDashboard() {
   });
 
   const seatMutation = useMutation({
-    mutationFn: reservationsAPI.seat,
-    onSuccess: () => {
-      addToast('Customer seated!');
-      queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
-    },
+  mutationFn: reservationsAPI.seat,
+  onSuccess: (data) => {
+    addToast('Customer seated!');
+    queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+    
+    // Navigate to take order if session was created
+    if (data?.data?.session?.id) {
+      navigate(`/waiter/take-order/${data.data.session.id}`);
+    }
+  },
+  onError: (error: any) => {
+    addToast(error.message || 'Failed to seat customer');
+  },
   });
 
   const endSessionMutation = useMutation({
     mutationFn: waiterAPI.endSession,
     onSuccess: () => {
-      addToast('Session completed!');
+      addToast('✅ Session completed! Table is now available.');
       queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+      setPaymentSession(null);
+    },
+    onError: (error: any) => {
+      console.error('Session close error:', error);
+      addToast(`❌ Failed to close session: ${error.message || 'Unknown error'}`);
     },
   });
 
@@ -192,6 +208,19 @@ export default function WaiterDashboard() {
                 <div className="text-6xl mb-4">🪑</div>
                 <h3 className="text-xl font-bold mb-2">No Active Tables</h3>
                 <p className="text-gray-600">Seat customers from pending reservations or start a walk-in session</p>
+
+		 <button
+                  onClick={() => navigate('/admin/tables')}
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                  🪑 Start Walk-in Session
+                </button>
+		 <button
+                   onClick={() => navigate('/admin/tables')}
+                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                 >
+                   🪑 View Available Tables
+                 </button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -199,7 +228,7 @@ export default function WaiterDashboard() {
                   <div
                     key={session.id}
                     className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer"
-                    onClick={() => navigate(`/waiter/session/${session.id}`)}
+                    //onClick={() => navigate(`/waiter/session/${session.id}`)}
                   >
                     <div className="p-4">
                       <div className="flex justify-between items-start mb-3">
@@ -258,7 +287,7 @@ export default function WaiterDashboard() {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (confirm('Complete this session?')) {
-                              endSessionMutation.mutate(session.id);
+                              setPaymentSession(session);
                             }
                           }}
                           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
@@ -315,6 +344,18 @@ export default function WaiterDashboard() {
           </div>
         </div>
       )}
+        {/* Payment Modal */}
+        {paymentSession && (
+        <PaymentModal
+          session={paymentSession}
+          onConfirm={() => {
+            endSessionMutation.mutate(paymentSession.id);
+          }}
+          onCancel={() => setPaymentSession(null)}
+          isProcessing={endSessionMutation.isPending}
+        />
+      )}
     </div>
   );
 }
+

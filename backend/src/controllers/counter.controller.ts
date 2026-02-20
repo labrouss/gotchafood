@@ -6,12 +6,12 @@ import { AppError } from '../middleware/error.middleware';
 const prisma = new PrismaClient();
 
 // Helper to generate order number
-const generateOrderNumber = async (prefix: string = 'CO'): Promise<string> => {
+const generateOrderNumber = async (prefix: string = 'CNT'): Promise<string> => {
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const count = await prisma.order.count({
     where: {
       orderNumber: { startsWith: `${prefix}-${today}` },
-      orderSource: prefix === 'CO' ? 'counter' : 'waiter'
+      orderSource: prefix === 'CNT' ? 'counter' : 'waiter'
     },
   });
   return `${prefix}-${today}-${String(count + 1).padStart(3, '0')}`;
@@ -84,7 +84,7 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
       }
     }
 
-    const orderNumber = await generateOrderNumber(data.orderSource === 'counter' ? 'CO' : 'WO');
+    const orderNumber = await generateOrderNumber(data.orderSource === 'counter' ? 'CNT' : 'WTR');
 
     // Create order without name field in items
     const order = await prisma.order.create({
@@ -133,7 +133,7 @@ export const getAllOrders = async (req: Request, res: Response, next: NextFuncti
   try {
     const { status, date, source } = req.query;
 
-    const where: any = { orderSource: { in: ['counter', 'waiter'] }, orderNumber: { not: { startsWith: 'W' } } };
+    const where: any = { orderSource: { in: ['counter', 'waiter'] }, orderNumber: { startsWith: 'CNT-'  } };
     if (source && source !== 'ALL') where.orderSource = source;
     if (status && status !== 'ALL') where.status = status;
     if (date) {

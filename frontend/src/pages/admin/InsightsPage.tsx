@@ -221,6 +221,17 @@ export default function InsightsPage() {
               </div>
             </div>
 
+	    {/* Waiter */}
+	    <div className="bg-purple-50 rounded-lg shadow p-4">
+              <div className="text-purple-600 text-sm">Waiter Orders Revenue</div>
+              <div className="text-2xl font-bold text-purple-700">
+                €{data?.data?.waiterRevenue?.toFixed(2) || '0.00'}
+              </div>
+              <div className="text-xs text-purple-600 mt-1">
+                {data?.data?.waiterOrderCount || 0} orders
+              </div>
+            </div>
+
             {/* On-time rates */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-gray-50 rounded-xl p-4">

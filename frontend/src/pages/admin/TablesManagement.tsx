@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import { useEffect } from 'react';  
 
 
 import TableAvailabilityModal from '../../components/TableAvailabilityModal';
@@ -67,12 +68,14 @@ export default function TablesManagement() {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const addToast = useToastStore((state) => state.addToast);
-
+  
   const [showModal, setShowModal] = useState(false);
   const [editingTable, setEditingTable] = useState<any>(null);
   const [filterLocation, setFilterLocation] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [availabilityTable, setAvailabilityTable] = useState<any>(null);
+  const [selectedTable, setSelectedTable] = useState<any>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
   
   const [formData, setFormData] = useState({
     tableNumber: '',
@@ -85,7 +88,7 @@ export default function TablesManagement() {
   const { data, isLoading } = useQuery({
     queryKey: ['tables'],
     queryFn: tablesAPI.getAll,
-    enabled: !!user && user.role === 'ADMIN',
+    enabled: !!user && user.role === 'ADMIN', 
   });
 
   const createMutation = useMutation({
@@ -142,10 +145,50 @@ export default function TablesManagement() {
     },
   });
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
+  const startSessionMutation = useMutation({
+  mutationFn: (data: { tableId: string; partySize: number; notes?: string }) =>
+    fetch(`${API_URL}/api/waiter/sessions/start`, {
+      method: 'POST',
+      headers: getAuthHeader(),
+      body: JSON.stringify(data),
+    }).then(r => r.json()),
+  onSuccess: (data) => {
+    addToast('Walk-in session started!');
+    queryClient.invalidateQueries({ queryKey: ['tables'] });
+    setShowSessionModal(false);
+    
+    if (data?.data?.session?.id) {
+      navigate(`/waiter/take-order/${data.data.session.id}`);
+    }
+  },
+});
+
+  // Allow ADMIN and STAFF (waiters)
+   useEffect(() => {
+     if (!user || !['ADMIN', 'STAFF'].includes(user.role)) {
+       navigate('/');
+     }
+   }, [user, navigate]);
+   
+   // Loading state
+   if (!user) {
+     return (
+       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+       </div>
+     );
+   }
+   
+   // Block unauthorized
+   if (!['ADMIN', 'STAFF'].includes(user.role)) {
+     return null;
+   }
+   
+  // Show access denied for non-admin
+  if (user.role !== 'ADMIN', 'STAFF' ) {
+    return null; // Will redirect via useEffect
   }
+
 
   const tables = data?.data?.tables || [];
 
@@ -405,6 +448,18 @@ export default function TablesManagement() {
                     🗑️
                   </button>
                 </div>
+		   {/* Start Walk-in Session Button */}
+                {table.status === 'AVAILABLE' && (
+                  <button
+                    onClick={() => {
+                      setSelectedTable(table);
+                      setShowSessionModal(true);
+                    }}
+                    className="w-full mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+                  >
+                    🪑 Start Walk-in Session
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -529,6 +584,82 @@ export default function TablesManagement() {
           onClose={() => setAvailabilityTable(null)}
         />
       )}
-    </div>
+      {/* Walk-in Session Modal */}
+      {showSessionModal && selectedTable && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-2xl font-bold mb-4">
+              Start Walk-in Session
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Table {selectedTable.tableNumber} - {selectedTable.location}
+              <br />
+              <span className="text-sm">Capacity: {selectedTable.capacity} guests</span>
+            </p>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const partySize = parseInt(formData.get('partySize') as string);
+              const notes = formData.get('notes') as string;
+
+              startSessionMutation.mutate({
+                tableId: selectedTable.id,
+                partySize,
+                notes: notes || undefined,
+              });
+            }}>
+              <div className="mb-4">
+                <label className="block text-sm font-semibold mb-2">
+                  Party Size <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  name="partySize"
+                  min="1"
+                  max={selectedTable.capacity}
+                  required
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
+                  placeholder={`Max ${selectedTable.capacity} guests`}
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
+                  placeholder="Any special requests or notes..."
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={startSessionMutation.isPending}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {startSessionMutation.isPending ? 'Starting...' : '🪑 Start Session'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSessionModal(false);
+                    setSelectedTable(null);
+                  }}
+                  className="px-4 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+   
+    </div>  // ← Final closing div
   );
 }

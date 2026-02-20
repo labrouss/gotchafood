@@ -67,8 +67,7 @@ export default function CounterPOS() {
   const menuItems = menuData?.data?.menuItems || [];
 
   const orders = (ordersData?.data?.orders || [])
-    .filter((o: any) => !o.orderNumber.startsWith('W'))
-    .filter((o: any) => !o.orderNumber.startsWith('ORD-'));
+  .filter((o: any) => o.orderNumber.startsWith('CNT-')); // Only counter orders
 
   const stats = statsData?.data || {};
 

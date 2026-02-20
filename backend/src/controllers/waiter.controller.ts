@@ -75,6 +75,27 @@ export const getWaiterDashboard = async (req: Request, res: Response, next: Next
   }
 };
 
+// Get available tables for walk-ins
+export const getAvailableTables = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const availableTables = await prisma.table.findMany({
+      where: {
+        status: 'AVAILABLE',
+      },
+      orderBy: {
+        tableNumber: 'asc',
+      },
+    });
+
+    res.json({
+      success: true,
+      data: { tables: availableTables },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ── Start table session ───────────────────────────────────────────────────
 export const startTableSession = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -204,8 +225,6 @@ export const endTableSession = async (req: Request, res: Response, next: NextFun
       },
       data: {
         status: 'COMPLETED',
-        isPaid: true,
-        paidAt: new Date(),
       },
     });
 
@@ -222,10 +241,16 @@ export const endTableSession = async (req: Request, res: Response, next: NextFun
 
 
     // Update table status back to available
-    await prisma.table.update({
-      where: { id: session.tableId },
-      data: { status: 'AVAILABLE' },
-    });
+    // Update table status back to available
+     try {
+       await prisma.table.update({
+         where: { id: session.tableId },
+         data: { status: 'AVAILABLE' },
+       });
+       console.log(`✅ Table freed: ${session.tableId}`);
+     } catch (error) {
+       console.error('❌ Table update failed:', error);
+     }
 
     // Update reservation if exists
     if (session.reservationId) {
@@ -275,8 +300,12 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
     }, 0);
 
     // Generate order number
-    const orderCount = await prisma.order.count();
-    const orderNumber = `W${String(orderCount + 1).padStart(6, '0')}`;
+    const orderCount = await prisma.order.count({
+    where: {
+    orderNumber: { startsWith: 'WTR-' },
+  },		       
+    });
+    const orderNumber = `WTR=${String(orderCount + 1).padStart(6, '0')}`;
 
     // Create order
     const order = await prisma.order.create({
@@ -326,6 +355,59 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
+
+// Mark order as served (removes from kitchen display)
+export const markOrderServed = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { orderId } = req.params;
+    const waiterId = (req as any).user.id;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { orderNumber: true, status: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    if (order.status !== 'READY') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Can only mark READY orders as served' 
+      });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'SERVED',
+        // Add servedAt field if it exists in schema
+        // servedAt: new Date(),
+        // servedBy: waiterId,
+      },
+      include: {
+        items: {
+          include: {
+            menuItem: {
+              select: { name: true },
+            },
+          },
+        },
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Order marked as served',
+      data: { order: updatedOrder },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
 // ── Add items to existing order ────────────────────────────────────────────
 export const addItemsToOrder = async (req: Request, res: Response, next: NextFunction) => {

@@ -14,7 +14,7 @@ export default function DeliveryDashboard() {
     queryKey: ['delivery-orders'],
     queryFn: () => adminAPI.getOrders(),
     // add filter for waiter orders
-    orderNumber: { not: { startsWith: 'W' } },	    
+    orderNumber: { not: { startsWith: 'WTR-' } },	    
     refetchInterval: 10000,
   });
   
@@ -42,7 +42,7 @@ export default function DeliveryDashboard() {
   //
   const orders = (data?.data?.orders || [])
     .filter((o: any) => o.status === 'OUT_FOR_DELIVERY')
-    .filter((o: any) => !o.orderNumber.startsWith('W'));
+    .filter((o: any) => o.orderNumber.startsWith('ONL-'));
 
   return (
     <div className="container mx-auto px-4 py-8">

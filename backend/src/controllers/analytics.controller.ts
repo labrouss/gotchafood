@@ -36,6 +36,20 @@ export const getInsights = async (
       orderBy: { placedAt: 'asc' },
     });
 
+    // Add waiter metrics (filter from already-loaded orders)
+    const waiterOrders = orders.filter((o: any) =>
+      o.orderNumber?.startsWith('WTR-') && o.status === 'COMPLETED'
+    );
+    
+    const waiterRevenue = waiterOrders.reduce(
+      (sum, o) => sum + Number(o.totalAmount),
+      0
+        );
+    
+    const waiterOrderCount = waiterOrders.length;
+    
+        
+
     const delivered = orders.filter((o: any) => o.status === 'DELIVERED');
 
     // 1. TIMING
@@ -187,7 +201,7 @@ export const getInsights = async (
 
     res.json({
       success: true,
-      data: { summary, timing, bottlenecks, staff, hourly: hourly.filter(h => h.orders > 0 || (h.hour >= 8 && h.hour <= 23)), daily: Object.values(daily) },
+      data: { summary, timing, bottlenecks, staff,  waiterRevenue, waiterOrderCount, hourly: hourly.filter(h => h.orders > 0 || (h.hour >= 8 && h.hour <= 23)), daily: Object.values(daily) },
     });
   } catch (error) {
     next(error);

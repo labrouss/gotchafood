@@ -662,6 +662,33 @@ export const updateOrderStatus = async (
       }
     }
 
+   // Auto-advance to READY when all items done (for waiter orders)
+    if (status === 'PREPARING') {
+      const allItemsDone = await prisma.orderItem.count({
+        where: {
+          orderId: id,
+          completedAt: null,
+        },
+      }) === 0;
+
+      if (allItemsDone) {
+        const order = await prisma.order.findUnique({
+          where: { id },
+          select: { orderNumber: true },
+        });
+
+        // Waiter orders → READY
+        // Other orders → OUT_FOR_DELIVERY
+        if (order?.orderNumber.startsWith('WTR-')) {
+          timestampUpdates.status = 'READY';
+          timestampUpdates.readyAt = new Date();
+        } else {
+          timestampUpdates.status = 'OUT_FOR_DELIVERY';
+          timestampUpdates.outForDeliveryAt = new Date();
+        }
+      }
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: timestampUpdates,
@@ -814,13 +841,25 @@ export const updateOrderItemStatus = async (
       const allDone = allSiblingItems.every((i) => i.completedAt !== null);
 
       if (allDone && (item.order.status === 'PREPARING' || item.order.status === 'CONFIRMED')) {
+        // Check order type: Waiter orders → READY, Others → OUT_FOR_DELIVERY
+        const isWaiterOrder = item.order.orderNumber?.startsWith('WTR-');
+        
+        const updateData: any = {
+          status: isWaiterOrder ? 'READY' : 'OUT_FOR_DELIVERY',
+          readyAt: new Date(),
+        };
+        
+        if (userId) {
+          updateData.readyBy = userId;
+        }
+        
+        if (!isWaiterOrder) {
+          updateData.outForDeliveryAt = new Date();
+        }
+        
         await prisma.order.update({
           where: { id: item.orderId },
-          data: {
-            status: 'OUT_FOR_DELIVERY',
-            readyAt: new Date(),
-            ...(userId && { readyBy: userId }),
-          },
+          data: updateData,
         });
       }
     }
