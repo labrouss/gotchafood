@@ -1,299 +1,131 @@
-# Food Ordering Application - Full Stack Rewrite
+# 🍕 Modern Food Ordering & Management System
 
-A modern, production-ready food ordering system built with Node.js, React, TypeScript, and MySQL/MariaDB.
+A comprehensive, production-ready full-stack application designed for restaurants, cafes, and delivery services. Built with **Node.js**, **React**, **TypeScript**, and **MySQL/MariaDB**, it features a multi-role ecosystem for customers, staff, and administrators.
+
+---
+
+## 🎨 Role-Based Features
+
+### 👔 Waiter & Staff
+- **Waiter Dashboard:** Manage active table sessions, view pending reservations, and track daily shift stats.
+- **Walk-in Sessions:** Start quick sessions for walk-in customers on available tables.
+- **Order Taking:** Handheld-friendly interface for creating and adding items to table orders.
+- **Table Management:** Real-time visibility into table occupancy and location (Main, Terrace, etc.).
+- **Shift Management:** Clock-in/out functionality with shift history tracking.
+
+### 🍳 Kitchen & Operations
+- **Kitchen Display System (KDS):** Real-time display of pending orders categorized by station (Kitchen, Bar, etc.) with automated item completion.
+- **Counter POS:** Optimized interface for over-the-counter orders with integrated loyalty scanning.
+- **Delivery Dashboard:** Specialized view for managing "Out for Delivery" and "Delivered" statuses for online orders.
+
+### 📈 Admin & Insights
+- **Enhanced Insights:** Granular revenue breakdown by channel (Waiter, Counter, Online) with interactive time-period filters (Today, 7/30/90 days).
+- **Staff HR:** Comprehensive staff management, including role assignment, performance metrics, and shift scheduling.
+- **Menu Management:** Full control over categories, products (with variations and options), and availability.
+- **System Settings:** Customize store name, theme (primary colors), logo, and automated loyalty tiers.
+- **Backup & Restore:** Secure database backup and restoration interface.
+
+### 👤 Customer Experience
+- **Online Ordering:** Modern UI for browsing menu items, customizing selections, and tracking orders.
+- **Loyalty Program:** Secure, QR-based loyalty system. Earn points on every purchase and unlock discounts at Bronze, Silver, Gold, and Platinum tiers.
+- **Table Reservations:** Integrated booking system with real-time availability checking.
+- **Customer Portal:** Manage addresses, view order history, track loyalty progress, and leave reviews.
+
+---
 
 ## 🚀 Technology Stack
 
 ### Backend
-- **Runtime**: Node.js 20+
-- **Framework**: Express.js with TypeScript
-- **Database**: MySQL 8.0 / MariaDB 10.6+
-- **ORM**: Prisma 5
-- **Authentication**: JWT with bcrypt
-- **Validation**: Zod
-- **API Documentation**: Swagger/OpenAPI
+- **Framework:** Express.js (Node.js 20+) with TypeScript.
+- **ORM:** Prisma 5+ for type-safe database queries.
+- **Database:** MySQL 8.0 / MariaDB 10.6+.
+- **Real-Time:** Socket.IO for instant order notifications and status updates.
+- **Validation:** Zod for robust schema validation.
+- **Security:** JWT (Authentication), Bcrypt (Hashing), Helmet (Headers), and AES-256-CBC for secure loyalty tokens.
 
 ### Frontend
-- **Framework**: React 18
-- **Language**: TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
-- **State Management**: Zustand + React Query
-- **Forms**: React Hook Form + Zod
-- **Routing**: React Router v6
+- **Framework:** React 18 with Vite.
+- **State Management:** Zustand (Global) & TanStack Query (Server-side cache).
+- **Styling:** Tailwind CSS with dynamic theme injection via React Context.
+- **Interactive:** Chart.js (Analytics), React Hook Form, and integrated QR scanning (jsQR/qrcode).
 
-### DevOps
-- **Containerization**: Docker & Docker Compose
-- **Process Manager**: PM2
-- **Environment**: dotenv
-- **API Testing**: Thunder Client / Postman collections included
+---
 
 ## 📁 Project Structure
 
 ```
 food-ordering-app/
-├── backend/                 # Node.js API server
+├── backend/                 # Express API & Prisma Schema
 │   ├── src/
-│   │   ├── controllers/     # Request handlers
-│   │   ├── routes/          # API routes
-│   │   ├── middleware/      # Auth, validation, error handling
-│   │   ├── services/        # Business logic
-│   │   ├── utils/           # Helper functions
-│   │   └── types/           # TypeScript types
-│   ├── prisma/              # Database schema & migrations
-│   ├── tests/               # API tests
-│   └── package.json
-│
-├── frontend/                # React application
+│   │   ├── controllers/     # Business logic handlers
+│   │   ├── middleware/      # Auth, Error, & Security middleware
+│   │   ├── routes/          # API endpoint definitions
+│   │   ├── utils/           # Encryption & Helper functions
+│   │   └── server.ts        # Entry point & Socket.IO setup
+│   └── prisma/              # Database schema & migrations
+├── frontend/                # React/Vite Application
 │   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── pages/           # Page components
-│   │   ├── hooks/           # Custom hooks
-│   │   ├── services/        # API client
-│   │   ├── store/           # State management
-│   │   ├── types/           # TypeScript types
-│   │   └── utils/           # Helper functions
-│   └── package.json
-│
-├── database/                # Database scripts & documentation
-├── docker-compose.yml       # Local development setup
-└── README.md
+│   │   ├── components/      # Reusable UI & Complex modules (POS, KDS)
+│   │   ├── pages/           # View components organized by role
+│   │   ├── services/        # API client (Axios)
+│   │   └── store/           # Zustand state definitions
+├── docker-compose.yml       # Production/Dev containerization
+└── scripts/                 # Utility scripts (SETUP.sh, etc.)
 ```
+
+---
 
 ## 🏃 Quick Start
 
-### Prerequisites
-- Node.js 20+ and npm/yarn/pnpm
-- Docker and Docker Compose (optional, recommended)
-- MySQL 8.0 or MariaDB 10.6+
+### 1. Requirements
+- Node.js **20.0.0+**
+- MySQL **8.0** or MariaDB **10.6+**
+- Docker (optional but recommended)
 
-### Option 1: Using Docker (Recommended)
-
+### 2. Deployment via Docker (Fastest)
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd food-ordering-app
 
-# Start all services
+# Start the environment
 docker-compose up -d
-
-# The application will be available at:
-# - Frontend: http://localhost:5173
-# - Backend API: http://localhost:3000
-# - API Docs: http://localhost:3000/api-docs
 ```
+*Frontend: http://localhost:5173 | Backend API: http://localhost:3000*
 
-### Option 2: Manual Setup
-
-```bash
-# 1. Setup Backend
-cd backend
-npm install
-cp .env.example .env
-# Edit .env with your database credentials
-npx prisma migrate dev
-npx prisma generate
-npm run dev
-
-# 2. Setup Frontend (in a new terminal)
-cd frontend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-## 🗄️ Database Setup
-
-The application uses Prisma ORM for database management.
-
-### Run Migrations
-```bash
-cd backend
-npx prisma migrate dev
-```
-
-### Seed Database (Sample Data)
-```bash
-npm run seed
-```
-
-### View Database (Prisma Studio)
-```bash
-npx prisma studio
-```
-
-## 🔑 Environment Variables
-
-### Backend (.env)
-```env
-DATABASE_URL="mysql://user:password@localhost:3306/food_ordering"
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-JWT_EXPIRES_IN="7d"
-NODE_ENV="development"
-PORT=3000
-```
-
-### Frontend (.env)
-```env
-VITE_API_URL=http://localhost:3000/api
-```
-
-## 📚 API Documentation
-
-Once the backend is running, visit:
-- **Swagger UI**: http://localhost:3000/api-docs
-- **OpenAPI JSON**: http://localhost:3000/api-docs.json
-
-### Key Endpoints
-
-#### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `POST /api/auth/refresh` - Refresh token
-- `GET /api/auth/me` - Get current user
-
-#### Menu
-- `GET /api/menu` - Get all menu items
-- `GET /api/menu/:id` - Get menu item details
-- `GET /api/categories` - Get categories
-
-#### Orders
-- `POST /api/orders` - Create new order
-- `GET /api/orders` - Get user's orders
-- `GET /api/orders/:id` - Get order details
-- `PATCH /api/orders/:id/status` - Update order status (admin)
-
-#### Admin
-- `POST /api/admin/menu` - Create menu item
-- `PUT /api/admin/menu/:id` - Update menu item
-- `DELETE /api/admin/menu/:id` - Delete menu item
-- `GET /api/admin/orders` - Get all orders
-
-## 🧪 Testing
-
-### Backend Tests
-```bash
-cd backend
-npm test                 # Run all tests
-npm run test:watch      # Watch mode
-npm run test:coverage   # Coverage report
-```
-
-### Frontend Tests
-```bash
-cd frontend
-npm test
-```
-
-## 🚀 Deployment
-
-### Build for Production
-
-```bash
-# Backend
-cd backend
-npm run build
-npm start
-
-# Frontend
-cd frontend
-npm run build
-# Serve the 'dist' folder with nginx or static hosting
-```
-
-### Docker Production Build
-```bash
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-## 📊 Database Schema
-
-### Key Tables
-- **users** - User accounts and authentication
-- **menu_items** - Food items available for order
-- **categories** - Menu categories
-- **orders** - Customer orders
-- **order_items** - Items within each order
-- **addresses** - Delivery addresses
-- **payments** - Payment records
-
-See `backend/prisma/schema.prisma` for complete schema.
-
-## 🔐 Security Features
-
-- Password hashing with bcrypt (10 rounds)
-- JWT authentication with HTTP-only cookies
-- Input validation using Zod schemas
-- SQL injection protection via Prisma ORM
-- XSS prevention
-- CORS configuration
-- Rate limiting on sensitive endpoints
-- Helmet.js security headers
-
-## 🎨 Features
-
-### Customer Features
-- User registration and authentication
-- Browse menu by categories
-- Search and filter items
-- Shopping cart management
-- Multiple delivery addresses
-- Order tracking
-- Order history
-- User profile management
-
-### Admin Features
-- Dashboard with analytics
-- Menu management (CRUD)
-- Order management
-- User management
-- Category management
-- Real-time order notifications
-
-## 🛠️ Development
-
-### Available Scripts
-
+### 3. Manual Development Setup
 **Backend:**
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm test` - Run tests
-- `npm run lint` - Lint code
-- `npm run format` - Format code with Prettier
+```bash
+cd backend
+npm install
+cp .env.example .env      # Configure your DB URL & Secret
+npx prisma migrate dev    # Setup database
+npm run dev
+```
 
 **Frontend:**
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Lint code
-
-## 📝 License
-
-MIT License - feel free to use this project for commercial purposes.
-
-## 👥 Support
-
-For issues, questions, or contributions, please open an issue or pull request.
-
-## 🗺️ Roadmap
-
-- [ ] Payment integration (Stripe/PayPal)
-- [ ] Real-time order tracking
-- [ ] Push notifications
-- [ ] Email notifications
-- [ ] SMS notifications
-- [ ] Admin analytics dashboard
-- [ ] Inventory management
-- [ ] Loyalty program
-- [ ] Multi-language support (Greek/English)
-- [ ] Mobile app (React Native)
-- [ ] PWA support
-- [ ] Social media login
-- [ ] Reviews and ratings
-- [ ] Delivery time slot selection
-- [ ] Promotional codes and discounts
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-Built with ❤️ using modern web technologies
+## 📊 Roadmap & Upcoming
+- [x] **Loyalty Program:** QR-based points and tiered discounts.
+- [x] **Admin Insights:** Multi-channel revenue analytics.
+- [x] **Kitchen Sync:** Real-time KDS with status synchronization.
+- [ ] **Payment Integration:** Stripe/PayPal integration for online payments.
+- [ ] **Mobile App:** Dedicated React Native application for Waiters.
+- [ ] **Inventory Management:** Low-stock alerts and ingredient tracking.
+
+---
+
+## 🛡️ Security & Performance
+- **Encrypted QR Tokens:** Loyalty codes expire every 5 minutes and are encrypted using AES-256 to prevent cloning.
+- **Optimized Queries:** Database indexes and filtered fetching for active orders.
+- **Rate Limiting:** Protection against brute-force on auth and sensitive endpoints.
+
+---
+Built with ❤️ by the development team. Distributed under the MIT License.
