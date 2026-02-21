@@ -5,27 +5,27 @@
  */
 
 export const printContent = (html: string, title: string = 'Print') => {
-    // Create a hidden iframe
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.id = 'print-iframe';
+  // Create a hidden iframe
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.id = 'print-iframe';
 
-    document.body.appendChild(iframe);
+  document.body.appendChild(iframe);
 
-    const doc = iframe.contentWindow?.document || iframe.contentDocument;
-    if (!doc) {
-        console.error('Could not access iframe document');
-        return;
-    }
+  const doc = iframe.contentWindow?.document || iframe.contentDocument;
+  if (!doc) {
+    console.error('Could not access iframe document');
+    return;
+  }
 
-    // Inject content and styles
-    doc.open();
-    doc.write(`
+  // Inject content and styles
+  doc.open();
+  doc.write(`
     <html>
       <head>
         <title>${title}</title>
@@ -120,38 +120,50 @@ export const printContent = (html: string, title: string = 'Print') => {
       </body>
     </html>
   `);
-    doc.close();
+  doc.close();
 };
 
 export const generateReceiptHTML = (order: any, storeName: string = 'FOOD APP') => {
-    const itemsHTML = order.items.map((item: any) => `
+  // Handle both `items` (counter) and `orderItems` (waiter/online) field names
+  const items = order.items || order.orderItems || [];
+  const itemsHTML = items.map((item: any) => {
+    const menuItemName = item.menuItem?.name || item.name || 'Item';
+    const price = item.price ?? item.unitPrice ?? 0;
+    const qty = item.quantity ?? 1;
+    return `
     <div class="item">
-      <span>${item.quantity}x ${item.menuItem.name}</span>
-      <span>€${(item.price * item.quantity).toFixed(2)}</span>
+      <span>${qty}x ${menuItemName}</span>
+      <span>€${(parseFloat(price) * qty).toFixed(2)}</span>
     </div>
     ${item.notes ? `<div style="font-size: 10px; font-style: italic; margin-bottom: 5px;">* ${item.notes}</div>` : ''}
-  `).join('');
+  `;
+  }).join('');
 
-    return `
+  // Handle different user shapes
+  const user = order.user || {};
+  const customerName = user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Guest';
+
+  return `
     <div class="receipt">
       <h1>${storeName}</h1>
       <div style="text-align: center; font-size: 12px;">
         Order #${order.orderNumber}<br>
         Date: ${new Date(order.createdAt).toLocaleString()}<br>
-        Customer: ${order.user.firstName} ${order.user.lastName}
+        Customer: ${customerName}
       </div>
       <div class="divider"></div>
       ${itemsHTML}
       <div class="divider"></div>
       <div class="item">
         <span>Subtotal</span>
-        <span>€${parseFloat(order.subtotal).toFixed(2)}</span>
+        <span>€${parseFloat(order.subtotal || order.totalAmount || 0).toFixed(2)}</span>
       </div>
+      ${order.deliveryFee && parseFloat(order.deliveryFee) > 0 ? `
       <div class="item">
         <span>Delivery Fee</span>
         <span>€${parseFloat(order.deliveryFee).toFixed(2)}</span>
-      </div>
-      ${order.loyaltyDiscount > 0 ? `
+      </div>` : ''}
+      ${order.loyaltyDiscount && parseFloat(order.loyaltyDiscount) > 0 ? `
       <div class="item" style="color: red;">
         <span>Loyalty Discount</span>
         <span>-€${parseFloat(order.loyaltyDiscount).toFixed(2)}</span>
@@ -167,22 +179,28 @@ export const generateReceiptHTML = (order: any, storeName: string = 'FOOD APP') 
 };
 
 export const generateKitchenTicketHTML = (order: any, station: string = 'Kitchen') => {
-    const itemsHTML = order.items
-        .filter((item: any) => station === 'all' || item.station === station)
-        .map((item: any) => `
+  // Handle both `items` and `orderItems` field names — print ALL items, no station filtering
+  const allItems = order.items || order.orderItems || [];
+
+  if (allItems.length === 0) return '';
+
+  const itemsHTML = allItems.map((item: any) => {
+    const name = item.menuItem?.name || item.name || 'Item';
+    return `
     <div class="item-row">
-      ${item.quantity}x ${item.menuItem.name}
+      ${item.quantity}x ${name}
       ${item.notes ? `<div class="notes">NOTE: ${item.notes}</div>` : ''}
     </div>
-  `).join('');
+  `;
+  }).join('');
 
-    if (!itemsHTML) return '';
+  const headerLabel = (station === 'all' || station === 'Order' || station === 'Όλα') ? 'KITCHEN' : station.toUpperCase();
 
-    return `
+  return `
     <div class="ticket">
       <div class="header">
-        <h2 style="margin: 0;">${station.toUpperCase()} TICKET</h2>
-        <div style="font-size: 18px; font-weight: bold;">#${order.orderNumber.split('-')[1]}</div>
+        <h2 style="margin: 0;">${headerLabel} TICKET</h2>
+        <div style="font-size: 18px; font-weight: bold;">#${order.orderNumber?.split('-')[1] || order.orderNumber}</div>
         <div>${new Date().toLocaleTimeString()}</div>
       </div>
       <div class="body">
@@ -196,8 +214,8 @@ export const generateKitchenTicketHTML = (order: any, station: string = 'Kitchen
 };
 
 export const generateReportHTML = (data: any, title: string) => {
-    // Simplified report layout
-    return `
+  // Simplified report layout
+  return `
     <div class="report">
       <h1 style="text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px;">${title}</h1>
       <div style="margin-bottom: 30px;">
