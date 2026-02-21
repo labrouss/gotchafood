@@ -8,6 +8,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import { printContent, generateReceiptHTML } from '../../utils/print.util';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -104,12 +105,23 @@ export default function WaiterOrderDetail() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Order Details</h1>
-          <button
-            onClick={() => navigate('/waiter')}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-          >
-            ← Back
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const html = generateReceiptHTML(order);
+                printContent(html, `Order_${order.orderNumber}`);
+              }}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold"
+            >
+              🖨️ Print Receipt
+            </button>
+            <button
+              onClick={() => navigate('/waiter')}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            >
+              ← Back
+            </button>
+          </div>
         </div>
 
         {/* Order Card */}

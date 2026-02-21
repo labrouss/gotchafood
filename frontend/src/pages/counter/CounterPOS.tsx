@@ -5,6 +5,9 @@ import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
 import QRScanner from '../../components/QRScanner';
+import { useSettingsStore } from '../../store/settingsStore';
+
+import { printContent, generateReceiptHTML } from '../../utils/print.util';
 
 export default function CounterPOS() {
   const navigate = useNavigate();
@@ -12,11 +15,14 @@ export default function CounterPOS() {
   const user = useAuthStore((state) => state.user);
   const addToast = useToastStore((state) => state.addToast);
 
+  const getSetting = useSettingsStore((state) => state.getSetting);
+
   const [cart, setCart] = useState<any[]>([]);
   const [loyaltyPhone, setLoyaltyPhone] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [notes, setNotes] = useState('');
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [autoPrint, setAutoPrint] = useState(getSetting('printing.counter_receipt_auto', false));
 
   // Fetch menu items
   const { data: menuData } = useQuery({
@@ -40,8 +46,15 @@ export default function CounterPOS() {
 
   const createOrderMutation = useMutation({
     mutationFn: counterAPI.create,
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       addToast('Order created successfully!');
+
+      const newOrder = response.data.order;
+      if (autoPrint && newOrder) {
+        const html = generateReceiptHTML(newOrder);
+        printContent(html, `Order_${newOrder.orderNumber}`);
+      }
+
       setCart([]);
       setLoyaltyPhone('');
       setNotes('');
@@ -50,6 +63,11 @@ export default function CounterPOS() {
     },
     onError: () => addToast('Failed to create order'),
   });
+
+  const handlePrintLegacy = (order: any) => {
+    const html = generateReceiptHTML(order);
+    printContent(html, `Order_${order.orderNumber}`);
+  };
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: any) => counterAPI.updateStatus(id, status),
@@ -179,12 +197,21 @@ export default function CounterPOS() {
                   <div key={order.id} className="bg-white p-3 rounded-lg shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-bold">{order.orderNumber}</div>
-                      <button
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'OUT_FOR_DELIVERY' })}
-                        className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                      >
-                        Mark Ready
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handlePrintLegacy(order)}
+                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                          title="Print Receipt"
+                        >
+                          🖨️
+                        </button>
+                        <button
+                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'OUT_FOR_DELIVERY' })}
+                          className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                        >
+                          Mark Ready
+                        </button>
+                      </div>
                     </div>
                     <div className="text-xs text-gray-500">
                       {new Date(order.createdAt).toLocaleTimeString()}
@@ -205,12 +232,21 @@ export default function CounterPOS() {
                   <div key={order.id} className="bg-white p-3 rounded-lg shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                       <div className="font-bold">{order.orderNumber}</div>
-                      <button
-                        onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'DELIVERED' })}
-                        className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                      >
-                        Complete
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handlePrintLegacy(order)}
+                          className="text-xs bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-700"
+                          title="Print Receipt"
+                        >
+                          🖨️
+                        </button>
+                        <button
+                          onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'DELIVERED' })}
+                          className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                        >
+                          Complete
+                        </button>
+                      </div>
                     </div>
                     <div className="text-xs text-gray-500">
                       {new Date(order.createdAt).toLocaleTimeString()}
@@ -348,6 +384,20 @@ export default function CounterPOS() {
               <span>Total:</span>
               <span className="text-indigo-600">€{total.toFixed(2)}</span>
             </div>
+          </div>
+
+          {/* Auto-Print Toggle */}
+          <div className="mb-4 flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="autoPrint"
+              checked={autoPrint}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAutoPrint(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            />
+            <label htmlFor="autoPrint" className="text-sm font-semibold text-gray-700 cursor-pointer">
+              Auto-print receipt after checkout
+            </label>
           </div>
 
           {/* Checkout Button */}

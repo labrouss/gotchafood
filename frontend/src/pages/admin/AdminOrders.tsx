@@ -4,6 +4,7 @@ import { adminAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
+import { printContent, generateReceiptHTML } from '../../utils/print.util';
 
 const statusColors: any = {
   PENDING: 'bg-yellow-100 text-yellow-800',
@@ -85,11 +86,10 @@ export default function AdminOrders() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg font-semibold transition ${
-                statusFilter === status
+              className={`px-4 py-2 rounded-lg font-semibold transition ${statusFilter === status
                   ? 'bg-red-600 text-white'
                   : 'bg-gray-200 hover:bg-gray-300'
-              }`}
+                }`}
             >
               {status === 'ALL' ? 'All' : statusLabels[status]}
             </button>
@@ -364,6 +364,15 @@ export default function AdminOrders() {
                     {/* Workflow buttons - only show for non-final statuses */}
                     {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
                       <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            const html = generateReceiptHTML(order);
+                            printContent(html, `Order_${order.orderNumber}`);
+                          }}
+                          className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-semibold"
+                        >
+                          🖨️ Print Receipt
+                        </button>
                         {order.status === 'PENDING' && (
                           <button
                             onClick={() => updateStatusMutation.mutate({ id: order.id, status: 'CONFIRMED' })}

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HomePage from './pages/HomePage';
@@ -47,6 +48,7 @@ import MyReservations from './pages/customer/MyReservations';
 
 import { useAuthStore } from './store/authStore';
 import { useCartStore } from './store/cartStore';
+import { useSettingsStore } from './store/settingsStore';
 
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
@@ -55,7 +57,12 @@ const queryClient = new QueryClient();
 function AppContent() {
   const { user, logout } = useAuthStore();
   const itemCount = useCartStore((state) => state.getItemCount());
+  const fetchSettings = useSettingsStore((state) => state.fetchSettings);
   const { storeName, logoUrl, primaryColor } = useTheme();
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'STAFF';
 

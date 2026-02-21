@@ -126,6 +126,11 @@ export const initializeDefaults = async (req: Request, res: Response, next: Next
       { key: 'general.currency', value: '€', category: 'general', label: 'Currency Symbol', dataType: 'string' },
       { key: 'general.tax_rate', value: '24', category: 'general', label: 'Tax Rate (%)', dataType: 'number' },
       { key: 'general.counter_orders_enabled', value: 'true', category: 'general', label: 'Counter Orders Enabled', dataType: 'boolean' },
+
+      // Printing settings
+      { key: 'printing.counter_receipt_auto', value: 'false', category: 'printing', label: 'Counter POS Auto-print Receipt', dataType: 'boolean' },
+      { key: 'printing.kitchen_ticket_auto', value: 'false', category: 'printing', label: 'Kitchen Auto-print Ticket', dataType: 'boolean' },
+      { key: 'printing.bar_ticket_auto', value: 'false', category: 'printing', label: 'Bar Auto-print Ticket', dataType: 'boolean' },
     ];
 
     const created = [];

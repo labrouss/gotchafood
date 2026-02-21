@@ -283,6 +283,7 @@ export default function StoreSettings() {
                 {category === 'loyalty' && '🏆'}
                 {category === 'theme' && '🎨'}
                 {category === 'general' && '⚙️'}
+                {category === 'printing' && '🖨️'}
                 {category} Settings
               </h2>
             </div>

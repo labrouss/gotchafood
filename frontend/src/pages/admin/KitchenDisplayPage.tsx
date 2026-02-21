@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
+import { useSettingsStore } from '../../store/settingsStore';
+import { printContent, generateKitchenTicketHTML } from '../../utils/print.util';
 
 const statusColors: any = {
   PENDING: 'bg-yellow-400 text-gray-900',
@@ -34,6 +36,7 @@ export default function KitchenDisplayPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const previousOrderCountRef = useRef(0);
+  const printedOrdersRef = useRef<Set<string>>(new Set());
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const isStaffLocked = user?.role === 'STAFF' && !!user?.routingRole;
@@ -81,13 +84,40 @@ export default function KitchenDisplayPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kitchen-orders'] }),
   });
 
-  /* ── sound on new orders ── */
+  /* ── sound and autoprint on new orders ── */
+  const getSetting = useSettingsStore((state) => state.getSetting);
+
   useEffect(() => {
     const orders = data?.data?.orders || [];
-    const count = orders.filter((o: any) => ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)).length;
-    if (count > previousOrderCountRef.current && previousOrderCountRef.current > 0) playBeep();
+    const activeCurrentOrders = orders.filter((o: any) => ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status));
+    const count = activeCurrentOrders.length;
+
+    if (count > previousOrderCountRef.current && previousOrderCountRef.current > 0) {
+      playBeep();
+
+      // Auto-print logic
+      activeCurrentOrders.forEach((order: any) => {
+        if (!printedOrdersRef.current.has(order.id)) {
+          const isKitchenAuto = getSetting('printing.kitchen_ticket_auto', false);
+          const isBarAuto = getSetting('printing.bar_ticket_auto', false);
+
+          if (isKitchenAuto || isBarAuto) {
+            // Determine if this order should be printed for this station
+            // If kitchen auto is on, we print all. If only bar is on, we check station.
+            // For now, let's just print if enabled.
+            const html = generateKitchenTicketHTML(order, selectedStation === 'all' ? 'Order' : selectedStation);
+            printContent(html, `Ticket_${order.orderNumber}`);
+          }
+          printedOrdersRef.current.add(order.id);
+        }
+      });
+    } else {
+      // Initialize printedOrdersRef for existing orders on first load
+      activeCurrentOrders.forEach((o: any) => printedOrdersRef.current.add(o.id));
+    }
+
     previousOrderCountRef.current = count;
-  }, [data]); // eslint-disable-line
+  }, [data, selectedStation, getSetting]); // eslint-disable-line
 
   if (!user || (user.role !== 'ADMIN' && user.role !== 'STAFF')) {
     navigate('/');
@@ -153,6 +183,16 @@ export default function KitchenDisplayPage() {
               #{order.orderNumber.split('-')[1]}
             </h3>
             <p className="text-sm text-gray-500">{order.user.firstName} {order.user.lastName}</p>
+            <button
+              onClick={() => {
+                const stationName = stations.find((s: any) => s.id === selectedStation)?.name || 'Order';
+                const html = generateKitchenTicketHTML(order, stationName);
+                printContent(html, `Ticket_${order.orderNumber}_${selectedStation}`);
+              }}
+              className="mt-2 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded flex items-center gap-1"
+            >
+              🖨️ Print Ticket
+            </button>
           </div>
           <div className="text-right">
             <span className={`px-3 py-1 rounded-full text-sm font-bold ${statusColors[order.status] ?? 'bg-gray-300'}`}>
