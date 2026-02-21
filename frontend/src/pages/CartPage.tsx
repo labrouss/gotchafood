@@ -1,16 +1,28 @@
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
+import { useQuery } from '@tanstack/react-query';
+import { loyaltyAPI } from '../services/api';
 
 export default function CartPage() {
   const navigate = useNavigate();
   const cart = useCartStore();
   const user = useAuthStore((state) => state.user);
   const items = cart.items;
-  
+
+  const { data: rewardData } = useQuery({
+    queryKey: ['my-loyalty'],
+    queryFn: loyaltyAPI.getMyLoyalty,
+    enabled: !!user && user.role === 'CUSTOMER',
+  });
+
+  const loyalty = rewardData?.data?.loyalty;
+  const discountPercent = loyalty?.discountPercent || 0;
+
   const subtotal = cart.getTotal();
+  const discountAmount = (subtotal * discountPercent) / 100;
   const deliveryFee = subtotal >= 15 ? 0 : 2.5;
-  const total = subtotal + deliveryFee;
+  const total = subtotal - discountAmount + deliveryFee;
 
   const handleCheckout = () => {
     if (!user) {
@@ -31,7 +43,7 @@ export default function CartPage() {
           </p>
           <button
             onClick={() => navigate('/menu')}
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold"
+            className="bg-primary hover:bg-opacity-90 text-white px-8 py-3 rounded-lg font-semibold"
           >
             Περιηγηθείτε στο Μενού
           </button>
@@ -52,10 +64,10 @@ export default function CartPage() {
               key={item.menuItemId}
               className="bg-white rounded-lg shadow p-4 flex items-center gap-4"
             >
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded flex items-center justify-center text-3xl">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-primary/10 rounded flex items-center justify-center text-3xl">
                 🍽️
               </div>
-              
+
               <div className="flex-1">
                 <h3 className="font-bold text-lg">{item.name}</h3>
                 <p className="text-gray-600">€{item.price.toFixed(2)}</p>
@@ -86,7 +98,7 @@ export default function CartPage() {
                 </p>
                 <button
                   onClick={() => cart.removeItem(item.menuItemId)}
-                  className="text-red-600 hover:text-red-700 text-sm mt-1"
+                  className="text-primary hover:opacity-80 text-sm mt-1"
                 >
                   Αφαίρεση
                 </button>
@@ -99,7 +111,7 @@ export default function CartPage() {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow p-6 sticky top-4">
             <h2 className="text-xl font-bold mb-4">Σύνοψη Παραγγελίας</h2>
-            
+
             <div className="space-y-3 mb-4 pb-4 border-b">
               <div className="flex justify-between">
                 <span>Υποσύνολο</span>
@@ -109,6 +121,12 @@ export default function CartPage() {
                 <span>Κόστος παράδοσης</span>
                 <span>{deliveryFee === 0 ? 'Δωρεάν' : `€${deliveryFee.toFixed(2)}`}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Έκπτωση Loyalty ({loyalty?.tier})</span>
+                  <span>-€{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               {deliveryFee > 0 && (
                 <p className="text-xs text-gray-500">
                   Δωρεάν παράδοση για παραγγελίες άνω των €15
@@ -118,12 +136,12 @@ export default function CartPage() {
 
             <div className="flex justify-between font-bold text-xl mb-6">
               <span>Σύνολο</span>
-              <span className="text-red-600">€{total.toFixed(2)}</span>
+              <span className="text-primary">€{total.toFixed(2)}</span>
             </div>
 
             <button
               onClick={handleCheckout}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold text-lg"
+              className="w-full bg-primary hover:bg-opacity-90 text-white py-3 rounded-lg font-semibold text-lg"
             >
               Ολοκλήρωση Παραγγελίας
             </button>

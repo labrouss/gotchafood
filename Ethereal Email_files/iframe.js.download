@@ -1,0 +1,79 @@
+/* globals window */
+
+'use strict';
+
+(() => {
+    let keyName = 'source_visit';
+
+    let parseUrl = u => {
+        u = (u || '').toString().trim();
+        if (!u) {
+            return false;
+        }
+
+        let urlParts = u.split('?');
+        let mainPart = urlParts.shift();
+        let searchPart = urlParts.join('?');
+
+        let search = new Map(
+            searchPart.split('&').map(part => {
+                let parts = part.split('=');
+                let key = decodeURIComponent(parts.shift());
+                let value = decodeURIComponent(parts.join('='));
+                return [key, value];
+            })
+        );
+
+        return { url: mainPart, search };
+    };
+
+    let hasChanges = false;
+    let currentData = { t: Date.now() };
+
+    let currentValue = window.localStorage.getItem(keyName) || null;
+    if (currentValue) {
+        try {
+            currentData = JSON.parse(currentValue);
+        } catch (err) {
+            //ignore
+        }
+    }
+
+    try {
+        let mainUrl = parseUrl(window.location);
+        if (!mainUrl) {
+            return;
+        }
+
+        let sourceUrl;
+        if (mainUrl.search.has('u')) {
+            if (!currentData.o) {
+                currentData.o = mainUrl.search.get('u');
+                hasChanges = true;
+            }
+            sourceUrl = parseUrl(mainUrl.search.get('u'));
+        }
+
+        if (mainUrl.search.has('r')) {
+            if (!currentData.r) {
+                currentData.r = mainUrl.search.get('r');
+                hasChanges = true;
+            }
+        }
+
+        if (!sourceUrl) {
+            return;
+        }
+
+        Array.from(sourceUrl.search.entries()).forEach(entry => {
+            if (/^utm/.test(entry[0]) && !currentData[entry[0]]) {
+                currentData[entry[0]] = entry[1];
+                hasChanges = true;
+            }
+        });
+    } finally {
+        if (hasChanges) {
+            window.localStorage.setItem(keyName, JSON.stringify(currentData));
+        }
+    }
+})();

@@ -36,23 +36,28 @@ export const getInsights = async (
       orderBy: { placedAt: 'asc' },
     });
 
-    // Add waiter metrics (filter from already-loaded orders)
-    const waiterOrders = orders.filter((o: any) =>
-      o.orderNumber?.startsWith('WTR-') && o.status === 'COMPLETED'
-    );
+    // Revenue calculation helper for finalized orders
+    const getOrderRevenue = (orderList: any[]) =>
+      orderList.reduce((sum, o) => sum + parseFloat(o.totalAmount.toString()), 0);
 
-    const waiterRevenue = waiterOrders.reduce(
-      (sum, o) => sum + Number(o.totalAmount),
-      0
-    );
+    const finalizedStatuses = ['READY', 'SERVED', 'DELIVERED', 'COMPLETED'];
+    const delivered = orders.filter((o: any) => o.status === 'DELIVERED');
+    const finalizedOrders = orders.filter((o: any) => finalizedStatuses.includes(o.status));
+
+    // Revenue Breakdowns
+    const waiterOrders = finalizedOrders.filter((o: any) => o.orderType === 'WAITER' || o.orderNumber?.startsWith('WTR-'));
+    const counterOrders = finalizedOrders.filter((o: any) => o.orderType === 'COUNTER' || o.orderNumber?.startsWith('CNT-'));
+    const onlineOrders = finalizedOrders.filter((o: any) => (o.orderType === 'DELIVERY' || o.orderType === 'DINE_IN') && !o.orderNumber?.startsWith('WTR-') && !o.orderNumber?.startsWith('CNT-'));
+
+    const waiterRevenue = getOrderRevenue(waiterOrders);
+    const counterRevenue = getOrderRevenue(counterOrders);
+    const onlineRevenue = getOrderRevenue(onlineOrders);
 
     const waiterOrderCount = waiterOrders.length;
+    const counterOrderCount = counterOrders.length;
+    const onlineOrderCount = onlineOrders.length;
 
-
-
-    const delivered = orders.filter((o: any) => o.status === 'DELIVERED');
-
-    // 1. TIMING
+    // 1. TIMING (Based on delivered orders only for delivery metrics)
     const confirmTimes: number[] = [];
     const prepTimes: number[] = [];
     const deliveryTimes: number[] = [];
@@ -167,19 +172,33 @@ export const getInsights = async (
     for (let i = daysNum - 1; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i);
       const key = d.toISOString().split('T')[0];
-      daily[key] = { date: key, orders: 0, delivered: 0, revenue: 0, avgMin: null, waiterOrders: 0, waiterRevenue: 0 };
+      daily[key] = {
+        date: key, orders: 0, delivered: 0, revenue: 0, avgMin: null,
+        waiterOrders: 0, waiterRevenue: 0,
+        counterOrders: 0, counterRevenue: 0,
+        onlineOrders: 0, onlineRevenue: 0
+      };
     }
     for (const o of orders) {
       const key = new Date(o.placedAt).toISOString().split('T')[0];
       if (daily[key]) {
         daily[key].orders++;
-        if (o.status === 'DELIVERED') {
-          daily[key].delivered++;
-          daily[key].revenue += parseFloat((o.totalAmount as any).toString());
-        }
-        if (o.orderNumber?.startsWith('WTR-') && o.status === 'COMPLETED') {
-          daily[key].waiterOrders++;
-          daily[key].waiterRevenue += parseFloat((o.totalAmount as any).toString());
+        if (finalizedStatuses.includes(o.status)) {
+          daily[key].delivered++; // "Finalized" for trend purposes
+          const amt = parseFloat(o.totalAmount.toString());
+          daily[key].revenue += amt;
+
+          // Breakdown
+          if (o.orderType === 'WAITER' || o.orderNumber?.startsWith('WTR-')) {
+            daily[key].waiterOrders++;
+            daily[key].waiterRevenue += amt;
+          } else if (o.orderType === 'COUNTER' || o.orderNumber?.startsWith('CNT-')) {
+            daily[key].counterOrders++;
+            daily[key].counterRevenue += amt;
+          } else {
+            daily[key].onlineOrders++;
+            daily[key].onlineRevenue += amt;
+          }
         }
       }
     }
@@ -193,20 +212,30 @@ export const getInsights = async (
       daily[key].avgMin = avg(times);
       daily[key].revenue = Math.round(daily[key].revenue * 100) / 100;
       daily[key].waiterRevenue = Math.round(daily[key].waiterRevenue * 100) / 100;
+      daily[key].counterRevenue = Math.round(daily[key].counterRevenue * 100) / 100;
+      daily[key].onlineRevenue = Math.round(daily[key].onlineRevenue * 100) / 100;
     }
 
     // 6. SUMMARY
     const summary = {
       totalOrders: orders.length,
-      deliveredCount: delivered.length,
+      deliveredCount: delivered.length, // Keep original "delivered" definition for this stat
+      finalizedCount: finalizedOrders.length,
       cancelledCount: orders.filter((o: any) => o.status === 'CANCELLED').length,
-      totalRevenue: Math.round(delivered.reduce((s: number, o: any) => s + parseFloat(o.totalAmount.toString()), 0) * 100) / 100,
+      totalRevenue: Math.round(finalizedOrders.reduce((s: number, o: any) => s + parseFloat(o.totalAmount.toString()), 0) * 100) / 100,
       periodDays: daysNum,
     };
 
     res.json({
       success: true,
-      data: { summary, timing, bottlenecks, staff, waiterRevenue, waiterOrderCount, hourly: hourly.filter(h => h.orders > 0 || (h.hour >= 8 && h.hour <= 23)), daily: Object.values(daily) },
+      data: {
+        summary, timing, bottlenecks, staff,
+        waiterRevenue, waiterOrderCount,
+        counterRevenue, counterOrderCount,
+        onlineRevenue, onlineOrderCount,
+        hourly: hourly.filter(h => h.orders > 0 || (h.hour >= 8 && h.hour <= 23)),
+        daily: Object.values(daily)
+      },
     });
   } catch (error) {
     next(error);

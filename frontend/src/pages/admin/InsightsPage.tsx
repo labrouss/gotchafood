@@ -220,14 +220,45 @@ export default function InsightsPage() {
               </div>
             </div>
 
-            {/* Waiter */}
-            <div className="bg-purple-50 rounded-lg shadow p-4">
-              <div className="text-purple-600 text-sm">Waiter Orders Revenue</div>
-              <div className="text-2xl font-bold text-purple-700">
-                €{data?.data?.waiterRevenue?.toFixed(2) || '0.00'}
+            {/* Revenue Breakdowns */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Waiter */}
+              <div className="bg-purple-50 rounded-xl shadow-sm p-5 border border-purple-100">
+                <div className="text-purple-600 text-sm font-semibold mb-1 flex items-center gap-2">
+                  <span>🤵 Waiter Revenue</span>
+                </div>
+                <div className="text-3xl font-extrabold text-purple-700">
+                  €{d.waiterRevenue?.toFixed(2) || '0.00'}
+                </div>
+                <div className="text-xs text-purple-500 mt-2 font-medium">
+                  {d.waiterOrderCount || 0} finalized orders
+                </div>
               </div>
-              <div className="text-xs text-purple-600 mt-1">
-                {data?.data?.waiterOrderCount || 0} orders
+
+              {/* Counter */}
+              <div className="bg-blue-50 rounded-xl shadow-sm p-5 border border-blue-100">
+                <div className="text-blue-600 text-sm font-semibold mb-1 flex items-center gap-2">
+                  <span>🏪 Counter Revenue</span>
+                </div>
+                <div className="text-3xl font-extrabold text-blue-700">
+                  €{d.counterRevenue?.toFixed(2) || '0.00'}
+                </div>
+                <div className="text-xs text-blue-500 mt-2 font-medium">
+                  {d.counterOrderCount || 0} finalized orders
+                </div>
+              </div>
+
+              {/* Online */}
+              <div className="bg-orange-50 rounded-xl shadow-sm p-5 border border-orange-100">
+                <div className="text-orange-600 text-sm font-semibold mb-1 flex items-center gap-2">
+                  <span>🌐 Online Revenue</span>
+                </div>
+                <div className="text-3xl font-extrabold text-orange-700">
+                  €{d.onlineRevenue?.toFixed(2) || '0.00'}
+                </div>
+                <div className="text-xs text-orange-500 mt-2 font-medium">
+                  {d.onlineOrderCount || 0} finalized orders
+                </div>
               </div>
             </div>
 
@@ -472,7 +503,9 @@ export default function InsightsPage() {
                     <th className="pb-2 pr-4 text-right">Orders</th>
                     <th className="pb-2 pr-4 text-right">Delivered</th>
                     <th className="pb-2 pr-4 text-right">Revenue</th>
-                    <th className="pb-2 pr-4 text-right">Waiter Revenue</th>
+                    <th className="pb-2 pr-4 text-right">Waiter</th>
+                    <th className="pb-2 pr-4 text-right">Counter</th>
+                    <th className="pb-2 pr-4 text-right">Online</th>
                     <th className="pb-2 text-right">Avg Time</th>
                   </tr>
                 </thead>
@@ -483,9 +516,17 @@ export default function InsightsPage() {
                       <td className="py-2 pr-4 text-right">{day.orders}</td>
                       <td className="py-2 pr-4 text-right">{day.delivered}</td>
                       <td className="py-2 pr-4 text-right font-semibold text-green-700">€{day.revenue.toFixed(2)}</td>
-                      <td className="py-2 pr-4 text-right text-purple-700">
-                        €{day.waiterRevenue?.toFixed(2) || '0.00'}
-                        <div className="text-xs text-gray-500">{day.waiterOrders || 0} orders</div>
+                      <td className="py-2 pr-4 text-right">
+                        <div className="font-semibold text-purple-700">€{day.waiterRevenue?.toFixed(2) || '0.00'}</div>
+                        <div className="text-[10px] text-gray-500">{day.waiterOrders || 0} ord.</div>
+                      </td>
+                      <td className="py-2 pr-4 text-right">
+                        <div className="font-semibold text-blue-700">€{day.counterRevenue?.toFixed(2) || '0.00'}</div>
+                        <div className="text-[10px] text-gray-500">{day.counterOrders || 0} ord.</div>
+                      </td>
+                      <td className="py-2 pr-4 text-right">
+                        <div className="font-semibold text-orange-700">€{day.onlineRevenue?.toFixed(2) || '0.00'}</div>
+                        <div className="text-[10px] text-gray-500">{day.onlineOrders || 0} ord.</div>
                       </td>
                       <td className="py-2 text-right">{day.avgMin != null ? `${day.avgMin} min` : '—'}</td>
                     </tr>

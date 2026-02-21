@@ -65,7 +65,7 @@ export default function LoyaltyPage() {
   };
 
   const currentTier = tierInfo[loyalty.tier as keyof typeof tierInfo];
-  const progress = currentTier.nextPoints 
+  const progress = currentTier.nextPoints
     ? Math.min((loyalty.lifetimePoints / currentTier.nextPoints) * 100, 100)
     : 100;
 
@@ -90,7 +90,7 @@ export default function LoyaltyPage() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : (
           <>
@@ -106,7 +106,7 @@ export default function LoyaltyPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <div className="text-sm opacity-90">Διαθέσιμοι Πόντοι</div>
                   <div className="text-5xl font-bold">{loyalty.points}</div>
@@ -187,7 +187,7 @@ export default function LoyaltyPage() {
                       <div className="text-sm">1 πόντος για κάθε €1 που ξοδεύετε</div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <span className="text-xl">🏆</span>
                     <div>
@@ -197,7 +197,7 @@ export default function LoyaltyPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <span className="text-xl">⭐</span>
                     <div>
@@ -205,7 +205,7 @@ export default function LoyaltyPage() {
                       <div className="text-sm">Bonus πόντοι για κάθε αξιολόγηση</div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <span className="text-xl">🎂</span>
                     <div>
@@ -224,11 +224,10 @@ export default function LoyaltyPage() {
                 {Object.entries(tierInfo).map(([key, tier]) => (
                   <div
                     key={key}
-                    className={`p-4 rounded-xl border-2 transition ${
-                      loyalty.tier === key
+                    className={`p-4 rounded-xl border-2 transition ${loyalty.tier === key
                         ? `border-${tier.textColor.replace('text-', '')} ${tier.bgColor}`
                         : 'border-gray-200'
-                    }`}
+                      }`}
                   >
                     <div className="text-center">
                       <div className="text-4xl mb-2">{tier.icon}</div>
@@ -252,7 +251,7 @@ export default function LoyaltyPage() {
             {/* Transaction History */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-2xl font-bold mb-6">📊 Ιστορικό Πόντων</h2>
-              
+
               {transactions.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="text-5xl mb-4">📭</div>
@@ -281,17 +280,16 @@ export default function LoyaltyPage() {
                           </div>
                         </div>
                       </div>
-                      <div className={`text-2xl font-bold ${
-                        tx.points > 0 ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <div className={`text-2xl font-bold ${tx.points > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
                         {tx.points > 0 ? '+' : ''}{tx.points}
                       </div>
                     </div>
                   ))}
-                  
+
                   {transactions.length > 10 && (
                     <div className="text-center pt-4">
-                      <button className="text-red-600 hover:text-red-700 font-semibold">
+                      <button className="text-primary hover:text-opacity-80 font-semibold">
                         Εμφάνιση Όλων ({transactions.length})
                       </button>
                     </div>
@@ -310,7 +308,7 @@ export default function LoyaltyPage() {
                 <div className="font-semibold text-gray-800">Κάντε Παραγγελία</div>
                 <div className="text-xs text-gray-600">Κερδίστε περισσότερους πόντους</div>
               </button>
-              
+
               <button
                 onClick={() => navigate('/review')}
                 className="bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-center transition"
@@ -319,7 +317,7 @@ export default function LoyaltyPage() {
                 <div className="font-semibold text-gray-800">Γράψτε Αξιολόγηση</div>
                 <div className="text-xs text-gray-600">Κερδίστε bonus πόντους</div>
               </button>
-              
+
               <button
                 onClick={() => navigate('/my-orders')}
                 className="bg-white hover:bg-gray-50 border-2 border-gray-200 rounded-xl p-4 text-center transition"

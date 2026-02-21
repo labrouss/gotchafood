@@ -40,12 +40,12 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-red-600 to-orange-500 rounded-2xl p-12 text-white mb-12 shadow-xl">
+      <div className="bg-gradient-to-r from-primary to-orange-500 rounded-2xl p-12 text-white mb-12 shadow-xl transition-colors duration-300">
         <div className="max-w-3xl">
           <h1 className="text-5xl font-bold mb-4">
             Γεια σου! Πεινάς;
           </h1>
-          <p className="text-xl mb-8 text-red-50">
+          <p className="text-xl mb-8 opacity-90">
             Παράγγειλε τα αγαπημένα σου φαγητά online και απόλαυσέ τα στο σπίτι σου!
           </p>
           <Link
@@ -66,18 +66,18 @@ export default function HomePage() {
           <input
             type="text"
             placeholder="Όνομα"
-            className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <input
             type="text"
             placeholder="Επώνυμο"
-            className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <input
             type="tel"
             placeholder="Τηλέφωνο"
             required
-            className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <input
             type="text"
@@ -86,7 +86,7 @@ export default function HomePage() {
           />
           <button
             type="submit"
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition"
+            className="bg-primary hover:bg-opacity-90 text-white font-bold py-3 px-6 rounded-lg transition"
           >
             {user ? 'Δες το Μενού 🚀' : 'Σύνδεση & Παραγγελία 🚀'}
           </button>
@@ -101,7 +101,7 @@ export default function HomePage() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -134,12 +134,12 @@ export default function HomePage() {
                     {item.description}
                   </p>
                   <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-red-600">
+                    <span className="text-2xl font-bold text-primary">
                       €{parseFloat(item.price).toFixed(2)}
                     </span>
                     <button
                       onClick={() => handleAddToCart(item)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition"
+                      className="bg-primary hover:bg-opacity-90 text-white px-4 py-2 rounded-lg transition"
                     >
                       Προσθήκη
                     </button>

@@ -7,6 +7,8 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import { Server } from 'socket.io';
+import http from 'http';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
@@ -36,6 +38,15 @@ import { notFound } from './middleware/notFound.middleware';
 dotenv.config();
 
 const app: Application = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*', // Allow all for now, or match corsOptions
+    methods: ['GET', 'POST'],
+  },
+});
+
+export { io };
 const PORT = process.env.PORT || 3000;
 
 // Swagger configuration
@@ -114,12 +125,12 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/loyalty',  loyaltyRoutes);
-app.use('/api/staffhr',  staffhrRoutes);
-app.use('/api/images',   imageRoutes);
+app.use('/api/loyalty', loyaltyRoutes);
+app.use('/api/staffhr', staffhrRoutes);
+app.use('/api/images', imageRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/loyalty-tiers', loyaltyTiersRoutes);
-app.use('/api/counter',  counterRoutes);
+app.use('/api/counter', counterRoutes);
 app.use('/api/tables', tablesRoutes);
 app.use('/api/reservations', reservationsRoutes);
 app.use('/api/waiter', waiterRoutes);
@@ -132,14 +143,29 @@ app.use('/stock-images', cors(corsOptions), express.static(path.join(process.cwd
 app.use(notFound);
 app.use(errorHandler);
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('A user connected via Socket.IO:', socket.id);
+
+  socket.on('join', (room) => {
+    socket.join(room);
+    console.log(`User ${socket.id} joined room: ${room}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
   console.log(`
 🚀 Server is running on port ${PORT}
 📚 API Documentation: http://localhost:${PORT}/api-docs
 🏥 Health Check: http://localhost:${PORT}/health
 🌍 Environment: ${process.env.NODE_ENV || 'development'}
 🌐 Network: Listening on all interfaces (0.0.0.0:${PORT})
+📡 Real-time: Socket.IO enabled
   `);
 });
 

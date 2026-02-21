@@ -234,3 +234,49 @@ export const setDefaultAddress = async (
     next(error);
   }
 };
+
+import { decrypt } from '../utils/crypto.util';
+
+export const identifyCustomer = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      throw new AppError('Token is required', 400);
+    }
+
+    try {
+      const decoded = decrypt(token);
+      const [userId, timestamp] = decoded.split('|');
+
+      // Check for replay attack (e.g., token older than 5 minutes)
+      const tokenAge = Date.now() - parseInt(timestamp);
+      if (tokenAge > 5 * 60 * 1000) {
+        throw new AppError('Token has expired', 400);
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+        },
+      });
+
+      if (!user) {
+        throw new AppError('Customer not found', 404);
+      }
+
+      res.json({
+        success: true,
+        data: { user },
+      });
+    } catch (err) {
+      throw new AppError('Invalid or corrupted loyalty token', 400);
+    }
+  } catch (error) {
+    next(error);
+  }
+};

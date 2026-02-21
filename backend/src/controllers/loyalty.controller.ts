@@ -9,6 +9,16 @@ export const getMyLoyalty = async (req: Request, res: Response, next: NextFuncti
       where: { userId: req.user.id },
     });
 
+    let discountPercent = 0;
+    if (loyalty) {
+      const tier = await prisma.loyaltyTier.findUnique({
+        where: { name: loyalty.tier }
+      });
+      if (tier && tier.isActive) {
+        discountPercent = tier.discount;
+      }
+    }
+
     const transactions = await prisma.rewardTransaction.findMany({
       where: { userId: req.user.id },
       orderBy: { createdAt: 'desc' },
@@ -18,9 +28,27 @@ export const getMyLoyalty = async (req: Request, res: Response, next: NextFuncti
     res.json({
       success: true,
       data: {
-        loyalty: loyalty || { points: 0, tier: 'bronze', lifetimePoints: 0 },
+        loyalty: loyalty ? { ...loyalty, discountPercent } : { points: 0, tier: 'bronze', lifetimePoints: 0, discountPercent: 0 },
         transactions,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+import { encrypt } from '../utils/crypto.util';
+
+export const getLoyaltyToken = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user.id;
+    // Token format: userId|timestamp
+    const payload = `${userId}|${Date.now()}`;
+    const token = encrypt(payload);
+
+    res.json({
+      success: true,
+      data: { token },
     });
   } catch (error) {
     next(error);

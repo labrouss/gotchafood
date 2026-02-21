@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore';
 export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     try {
       const response = await authAPI.login(email, password);
-      
+
       if (response.success) {
         setAuth(response.data.user, response.data.token);
         navigate('/');
@@ -55,7 +55,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="email@example.com"
               required
             />
@@ -69,7 +69,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="••••••••"
               required
             />
@@ -78,7 +78,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-opacity-90 text-white font-bold py-3 px-6 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Σύνδεση...' : 'Σύνδεση'}
           </button>
@@ -87,7 +87,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <p className="text-gray-600">
             Δεν έχεις λογαριασμό;{' '}
-            <Link to="/register" className="text-red-600 hover:text-red-700 font-semibold">
+            <Link to="/register" className="text-primary hover:opacity-80 font-semibold">
               Εγγραφή
             </Link>
           </p>

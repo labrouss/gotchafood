@@ -6,12 +6,17 @@ import {
   updateAddress,
   deleteAddress,
   setDefaultAddress,
+  identifyCustomer,
 } from '../controllers/user.controller';
+import { authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // All user routes require authentication
 router.use(authenticate);
+
+// Identify customer via loyalty token (Staff/Admin only)
+router.post('/identify-loyalty', authorize('ADMIN', 'STAFF', 'WAITER', 'COUNTER'), identifyCustomer);
 
 // Address Management
 router.get('/addresses', getUserAddresses);

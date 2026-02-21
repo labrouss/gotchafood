@@ -53,7 +53,7 @@ export default function MyReviews() {
           </div>
           <button
             onClick={() => navigate('/review')}
-            className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-105"
+            className="bg-primary hover:bg-opacity-90 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition transform hover:scale-105"
           >
             ➕ Νέα Αξιολόγηση
           </button>
@@ -62,7 +62,7 @@ export default function MyReviews() {
         {/* Loading State */}
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             <p className="text-gray-600 mt-4">Φόρτωση αξιολογήσεων...</p>
           </div>
         ) : reviews.length === 0 ? (
@@ -77,7 +77,7 @@ export default function MyReviews() {
             </p>
             <button
               onClick={() => navigate('/review')}
-              className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition transform hover:scale-105"
+              className="bg-primary hover:bg-opacity-90 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg transition transform hover:scale-105"
             >
               ⭐ Γράψτε την πρώτη σας αξιολόγηση
             </button>
@@ -104,7 +104,7 @@ export default function MyReviews() {
                         {review.rating}/5
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-3 text-sm text-gray-600">
                       <span>{getTypeLabel(review.type)}</span>
                       <span>•</span>
@@ -117,7 +117,7 @@ export default function MyReviews() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div>
                     {getStatusBadge(review.status)}
                   </div>
@@ -178,26 +178,26 @@ export default function MyReviews() {
             <h3 className="font-bold text-lg mb-4">📊 Τα Στατιστικά σας</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-red-600">
+                <div className="text-3xl font-bold text-primary">
                   {reviews.length}
                 </div>
                 <div className="text-sm text-gray-600">Συνολικές Αξιολογήσεις</div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-3xl font-bold text-orange-600">
                   {(reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1)}
                 </div>
                 <div className="text-sm text-gray-600">Μέση Βαθμολογία</div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600">
                   {reviews.filter((r: any) => r.status === 'reviewed').length}
                 </div>
                 <div className="text-sm text-gray-600">Αναθεωρημένες</div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-3xl font-bold text-green-600">
                   {reviews.filter((r: any) => r.status === 'implemented').length}
@@ -212,7 +212,7 @@ export default function MyReviews() {
         <div className="mt-8 text-center">
           <button
             onClick={() => navigate('/')}
-            className="text-red-600 hover:text-red-700 font-semibold"
+            className="text-primary hover:text-opacity-80 font-semibold"
           >
             ← Επιστροφή στην Αρχική
           </button>

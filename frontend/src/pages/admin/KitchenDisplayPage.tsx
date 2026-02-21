@@ -61,7 +61,7 @@ export default function KitchenDisplayPage() {
   /* ── queries ── */
   const { data, isLoading } = useQuery({
     queryKey: ['kitchen-orders'],
-    queryFn: () => adminAPI.getOrders(),
+    queryFn: () => adminAPI.getOrders('ALL', true),
     enabled: !!user && (user.role === 'ADMIN' || user.role === 'STAFF'),
     refetchInterval: autoRefresh ? refreshInterval : false,
   });
@@ -96,11 +96,11 @@ export default function KitchenDisplayPage() {
 
   /* ── derived data ── */
   const allOrders = data?.data?.orders || [];
-  const activeOrders = allOrders.filter((o: any) => !['DELIVERED', 'CANCELLED', 'SERVED'].includes(o.status));
+  const activeOrders = allOrders.filter((o: any) => !['DELIVERED', 'CANCELLED', 'SERVED', 'COMPLETED'].includes(o.status));
 
   const filteredOrders = selectedStation === 'all'
     ? activeOrders
-    : activeOrders.filter((o: any) => o.items?.some((i: any) => i.station === selectedStation));
+    : activeOrders.filter((o: any) => o.items?.some((i: any) => i.station === selectedStation && !i.completedAt));
 
   const grouped = {
     PENDING: filteredOrders.filter((o: any) => o.status === 'PENDING'),
@@ -142,8 +142,8 @@ export default function KitchenDisplayPage() {
 
     return (
       <div className={`bg-white rounded-lg shadow-lg p-4 border-l-4 ${elapsed > est + extra + 15 ? 'border-red-600 ring-4 ring-red-200'
-          : elapsed > est + extra ? 'border-orange-500'
-            : 'border-green-500'
+        : elapsed > est + extra ? 'border-orange-500'
+          : 'border-green-500'
         }`}>
 
         {/* ── card header ── */}
@@ -192,8 +192,8 @@ export default function KitchenDisplayPage() {
               <div
                 key={item.id}
                 className={`rounded-lg p-3 border-2 transition ${isCompleted ? 'bg-green-50 border-green-400'
-                    : isStarted ? 'bg-purple-50 border-purple-400'
-                      : 'bg-gray-50 border-gray-200'
+                  : isStarted ? 'bg-purple-50 border-purple-400'
+                    : 'bg-gray-50 border-gray-200'
                   }`}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -363,7 +363,7 @@ export default function KitchenDisplayPage() {
                 <span>{s.name}</span>
                 {s.id !== 'all' && (
                   <span className="bg-white bg-opacity-30 px-1.5 rounded text-xs">
-                    {activeOrders.filter((o: any) => o.items?.some((i: any) => i.station === s.id)).length}
+                    {activeOrders.filter((o: any) => o.items?.some((i: any) => i.station === s.id && !i.completedAt)).length}
                   </span>
                 )}
               </button>

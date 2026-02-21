@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
+import { io } from '../server';
 
 const prisma = new PrismaClient();
 
@@ -43,6 +44,8 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
     // Check if customer exists by phone
     let customerId: string | null = null;
     let pointsEarned = 0;
+    let discountAmount = 0;
+    let appliedTier = null;
 
     if (data.loyaltyPhone) {
       const customer = await prisma.user.findFirst({
@@ -53,6 +56,18 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
       if (customer) {
         customerId = customer.id;
 
+        if (customer.loyaltyReward) {
+          const tier = await prisma.loyaltyTier.findFirst({
+            where: { name: customer.loyaltyReward.tier, isActive: true },
+          });
+          if (tier) {
+            discountAmount = (subtotal * tier.discount) / 100;
+            appliedTier = tier.name;
+          }
+        }
+
+        const finalAmountForPoints = subtotal - discountAmount;
+
         // Calculate points
         const minOrderSetting = await prisma.storeSettings.findUnique({ where: { key: 'loyalty.min_order_for_points' } });
         const pointsPerEuroSetting = await prisma.storeSettings.findUnique({ where: { key: 'loyalty.points_per_euro' } });
@@ -60,8 +75,8 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
         const minOrder = minOrderSetting ? parseFloat(minOrderSetting.value) : 10;
         const pointsPerEuro = pointsPerEuroSetting ? parseFloat(pointsPerEuroSetting.value) : 10;
 
-        if (subtotal >= minOrder) {
-          pointsEarned = Math.floor(subtotal * pointsPerEuro);
+        if (finalAmountForPoints >= minOrder) {
+          pointsEarned = Math.floor(finalAmountForPoints * pointsPerEuro);
 
           if (customer.loyaltyReward) {
             await prisma.loyaltyReward.update({
@@ -97,7 +112,9 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
         loyaltyPhone: data.loyaltyPhone,
         subtotal,
         deliveryFee: 0,
-        totalAmount,
+        discountAmount,
+        appliedTier,
+        totalAmount: subtotal - discountAmount,
         pointsEarned,
         paymentMethod: data.paymentMethod,
         isPaid: !!data.paymentMethod,
@@ -122,6 +139,9 @@ export const createCounterOrder = async (req: Request, res: Response, next: Next
       },
     });
 
+    // Emit real-time notification
+    io.emit('new-order', order);
+
     res.status(201).json({ success: true, data: { order } });
   } catch (error) {
     next(error);
@@ -133,7 +153,7 @@ export const getAllOrders = async (req: Request, res: Response, next: NextFuncti
   try {
     const { status, date, source } = req.query;
 
-    const where: any = { orderSource: { in: ['counter', 'waiter'] }, orderNumber: { startsWith: 'CNT-'  } };
+    const where: any = { orderSource: { in: ['counter', 'waiter'] }, orderNumber: { startsWith: 'CNT-' } };
     if (source && source !== 'ALL') where.orderSource = source;
     if (status && status !== 'ALL') where.status = status;
     if (date) {
@@ -222,11 +242,27 @@ export const updateCounterOrderStatus = async (req: Request, res: Response, next
         if (userId) timestampUpdates.readyBy = userId;
         timestampUpdates.outForDeliveryAt = new Date();
         if (userId) timestampUpdates.outForDeliveryBy = userId;
+        // Ensure all items marked completed
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
         break;
       case 'DELIVERED':
         timestampUpdates.deliveredAt = new Date();
         if (userId) timestampUpdates.deliveredBy = userId;
         timestampUpdates.completedAt = new Date();
+        // Ensure all items marked completed
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
         await awardLoyaltyPoints(id);
         break;
       case 'CANCELLED':
@@ -241,6 +277,9 @@ export const updateCounterOrderStatus = async (req: Request, res: Response, next
         items: { include: { menuItem: true } },
       },
     });
+
+    // Emit real-time notification
+    io.emit('order-updated', order);
 
     res.json({ success: true, data: { order } });
   } catch (error) {

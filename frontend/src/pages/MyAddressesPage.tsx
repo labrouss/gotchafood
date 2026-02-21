@@ -8,7 +8,7 @@ export default function MyAddressesPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -103,7 +103,7 @@ export default function MyAddressesPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
       updateMutation.mutate({ id: editingId, data: formData });
     } else {
@@ -128,7 +128,7 @@ export default function MyAddressesPage() {
     }
 
     setLoadingLocation(true);
-    
+
     // Request geolocation with clear prompt
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -138,7 +138,7 @@ export default function MyAddressesPage() {
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&addressdetails=1`
           );
           const data = await response.json();
-          
+
           if (data && data.address) {
             setFormData({
               ...formData,
@@ -160,7 +160,7 @@ export default function MyAddressesPage() {
       (error) => {
         setLoadingLocation(false);
         let message = '';
-        
+
         switch (error.code) {
           case error.PERMISSION_DENIED:
             message = 'Δεν επιτρέπεται η πρόσβαση στην τοποθεσία. Παρακαλώ επιτρέψτε την πρόσβαση και δοκιμάστε ξανά.';
@@ -174,7 +174,7 @@ export default function MyAddressesPage() {
           default:
             message = 'Παρουσιάστηκε σφάλμα κατά τον εντοπισμό της τοποθεσίας.';
         }
-        
+
         alert('❌ ' + message);
       },
       {
@@ -192,7 +192,7 @@ export default function MyAddressesPage() {
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold"
+            className="bg-primary hover:bg-opacity-90 text-white px-6 py-2 rounded-lg font-semibold"
           >
             + Νέα Διεύθυνση
           </button>
@@ -345,13 +345,13 @@ export default function MyAddressesPage() {
               <button
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
+                className="bg-primary hover:bg-opacity-90 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
               >
                 {createMutation.isPending || updateMutation.isPending
                   ? 'Αποθήκευση...'
                   : editingId
-                  ? 'Ενημέρωση'
-                  : 'Αποθήκευση'}
+                    ? 'Ενημέρωση'
+                    : 'Αποθήκευση'}
               </button>
               <button
                 type="button"
@@ -367,7 +367,7 @@ export default function MyAddressesPage() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       ) : addresses.length === 0 ? (
         <div className="text-center py-12">
@@ -416,7 +416,7 @@ export default function MyAddressesPage() {
                     }
                   }}
                   disabled={deleteMutation.isPending}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50"
+                  className="flex-1 bg-red-600 hover:bg-opacity-90 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50"
                 >
                   Διαγραφή
                 </button>

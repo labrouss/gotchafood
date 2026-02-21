@@ -35,6 +35,18 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+  verifyEmail: async (token: string) => {
+    const response = await api.post('/auth/verify-email', { token });
+    return response.data;
+  },
+  updateProfile: async (data: any) => {
+    const response = await api.patch('/auth/profile', data);
+    return response.data;
+  },
+  changePassword: async (data: any) => {
+    const response = await api.post('/auth/change-password', data);
+    return response.data;
+  },
 };
 
 // Menu APIs
@@ -150,9 +162,12 @@ export const adminAPI = {
   },
 
   // Orders
-  getOrders: async (status?: string) => {
+  getOrders: async (status?: string, todayOnly?: boolean) => {
     const response = await api.get('/admin/orders', {
-      params: status ? { status } : {},
+      params: {
+        ...(status && status !== 'ALL' && { status }),
+        ...(todayOnly && { todayOnly: true }),
+      },
     });
     return response.data;
   },
@@ -243,10 +258,20 @@ export const reviewAPI = {
   },
 };
 
-// Loyalty API
 export const loyaltyAPI = {
   getMyLoyalty: async () => {
     const response = await api.get('/loyalty/my-loyalty');
+    return response.data;
+  },
+  getLoyaltyToken: async () => {
+    const response = await api.get('/loyalty/card-token');
+    return response.data;
+  },
+};
+
+export const userAPI = {
+  identifyCustomer: async (token: string) => {
+    const response = await api.post('/user/identify-loyalty', { token });
     return response.data;
   },
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { counterAPI, menuAPI } from '../../services/api';
+import { counterAPI, menuAPI, userAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../../components/ToastContainer';
@@ -67,7 +67,7 @@ export default function CounterPOS() {
   const menuItems = menuData?.data?.menuItems || [];
 
   const orders = (ordersData?.data?.orders || [])
-  .filter((o: any) => o.orderNumber.startsWith('CNT-')); // Only counter orders
+    .filter((o: any) => o.orderNumber.startsWith('CNT-')); // Only counter orders
 
   const stats = statsData?.data || {};
 
@@ -253,10 +253,23 @@ export default function CounterPOS() {
           {/* QR Scanner Modal */}
           {showQRScanner && (
             <QRScanner
-              onScan={(data) => {
-                setLoyaltyPhone(data);
+              onScan={async (data) => {
                 setShowQRScanner(false);
-                addToast('QR code scanned successfully!');
+                if (data.includes(':')) {
+                  // Advanced QR Code (Encrypted Token)
+                  try {
+                    const response = await userAPI.identifyCustomer(data);
+                    const customer = response.data.user;
+                    setLoyaltyPhone(customer.phone);
+                    addToast(`Customer ${customer.firstName} ${customer.lastName} identified!`);
+                  } catch (err: any) {
+                    addToast(err.response?.data?.message || 'Invalid or expired QR code', 'error');
+                  }
+                } else {
+                  // Fallback for legacy phone number QR codes
+                  setLoyaltyPhone(data);
+                  addToast('Phone number scanned successfully!');
+                }
               }}
               onClose={() => setShowQRScanner(false)}
             />

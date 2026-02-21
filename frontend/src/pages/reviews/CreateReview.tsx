@@ -11,7 +11,7 @@ export default function CreateReview() {
   const addToast = useToastStore((state) => state.addToast);
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
-  
+
   const [selectedOrder, setSelectedOrder] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -54,7 +54,7 @@ export default function CreateReview() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedOrder) {
       addToast('Παρακαλώ επιλέξτε μια παραγγελία για αξιολόγηση');
       return;
@@ -65,11 +65,11 @@ export default function CreateReview() {
       return;
     }
 
-    createMutation.mutate({ 
+    createMutation.mutate({
       orderId: selectedOrder,
-      rating, 
-      comment: comment.trim(), 
-      type 
+      rating,
+      comment: comment.trim(),
+      type
     });
   };
 
@@ -80,7 +80,7 @@ export default function CreateReview() {
 
   // Filter completed and delivered orders
   const allOrders = ordersData?.data?.orders || [];
-  const completedOrders = allOrders.filter((order: any) => 
+  const completedOrders = allOrders.filter((order: any) =>
     order.status === 'DELIVERED'
   );
 
@@ -102,7 +102,7 @@ export default function CreateReview() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 py-8">
         <div className="container mx-auto px-4 text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <p className="text-gray-600 mt-4">Φόρτωση παραγγελιών...</p>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function CreateReview() {
         <div className="mb-8">
           <button
             onClick={() => navigate('/my-reviews')}
-            className="text-red-600 hover:text-red-700 font-semibold mb-4 flex items-center gap-2"
+            className="text-primary hover:text-opacity-80 font-semibold mb-4 flex items-center gap-2"
           >
             ← Πίσω στις αξιολογήσεις μου
           </button>
@@ -133,14 +133,14 @@ export default function CreateReview() {
                 Δεν υπάρχουν παραγγελίες για αξιολόγηση
               </h2>
               <p className="text-gray-600 mb-6">
-                {completedOrders.length === 0 
+                {completedOrders.length === 0
                   ? 'Πρέπει να έχετε ολοκληρωμένες παραγγελίες για να γράψετε αξιολόγηση.'
                   : 'Έχετε ήδη αξιολογήσει όλες τις παραγγελίες σας!'}
               </p>
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={() => navigate('/')}
-                  className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition"
+                  className="bg-primary hover:bg-opacity-90 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition"
                 >
                   🛍️ Κάντε Παραγγελία
                 </button>
@@ -166,7 +166,7 @@ export default function CreateReview() {
                   <select
                     value={selectedOrder}
                     onChange={(e) => setSelectedOrder(e.target.value)}
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-red-500 focus:outline-none"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-primary focus:outline-none"
                     required
                   >
                     <option value="">-- Επιλέξτε Παραγγελία --</option>
@@ -220,7 +220,7 @@ export default function CreateReview() {
                   <label className="block text-lg font-bold text-gray-800 mb-4">
                     Πόσο ικανοποιημένοι είστε; *
                   </label>
-                  
+
                   <div className="flex justify-center gap-3 mb-4">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -235,9 +235,9 @@ export default function CreateReview() {
                       </button>
                     ))}
                   </div>
-                  
+
                   <div className="text-center">
-                    <span className="text-xl font-semibold text-red-600">
+                    <span className="text-xl font-semibold text-primary">
                       {ratingLabels[rating - 1]}
                     </span>
                   </div>
@@ -252,37 +252,34 @@ export default function CreateReview() {
                     <button
                       type="button"
                       onClick={() => setType('service')}
-                      className={`p-4 rounded-xl border-2 transition ${
-                        type === 'service'
-                          ? 'border-red-500 bg-red-50 text-red-700'
+                      className={`p-4 rounded-xl border-2 transition ${type === 'service'
+                          ? 'border-primary bg-primary/10 text-primary'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="text-3xl mb-2">🙋</div>
                       <div className="font-semibold">Εξυπηρέτηση</div>
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={() => setType('product')}
-                      className={`p-4 rounded-xl border-2 transition ${
-                        type === 'product'
-                          ? 'border-red-500 bg-red-50 text-red-700'
+                      className={`p-4 rounded-xl border-2 transition ${type === 'product'
+                          ? 'border-primary bg-primary/10 text-primary'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="text-3xl mb-2">🍽️</div>
                       <div className="font-semibold">Προϊόντα</div>
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={() => setType('suggestion')}
-                      className={`p-4 rounded-xl border-2 transition ${
-                        type === 'suggestion'
-                          ? 'border-red-500 bg-red-50 text-red-700'
+                      className={`p-4 rounded-xl border-2 transition ${type === 'suggestion'
+                          ? 'border-primary bg-primary/10 text-primary'
                           : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       <div className="text-3xl mb-2">💡</div>
                       <div className="font-semibold">Πρόταση</div>
@@ -299,13 +296,13 @@ export default function CreateReview() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder={
-                      type === 'service' 
+                      type === 'service'
                         ? 'Πώς ήταν η εξυπηρέτηση; Τι θα θέλατε να βελτιώσουμε;'
                         : type === 'product'
-                        ? 'Πώς σας φάνηκαν τα προϊόντα μας; Τι σας άρεσε περισσότερο;'
-                        : 'Ποιες είναι οι προτάσεις σας για να γίνουμε καλύτεροι;'
+                          ? 'Πώς σας φάνηκαν τα προϊόντα μας; Τι σας άρεσε περισσότερο;'
+                          : 'Ποιες είναι οι προτάσεις σας για να γίνουμε καλύτεροι;'
                     }
-                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 h-40 focus:border-red-500 focus:outline-none resize-none"
+                    className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 h-40 focus:border-primary focus:outline-none resize-none"
                     required
                     maxLength={500}
                   />
@@ -319,7 +316,7 @@ export default function CreateReview() {
                   <div className="flex items-start gap-3">
                     <div className="text-2xl">💬</div>
                     <div className="text-sm text-blue-800">
-                      <strong>Συμβουλή:</strong> Όσο πιο λεπτομερής είναι η αξιολόγησή σας, 
+                      <strong>Συμβουλή:</strong> Όσο πιο λεπτομερής είναι η αξιολόγησή σας,
                       τόσο περισσότερο μας βοηθάτε να βελτιωθούμε!
                     </div>
                   </div>
@@ -329,7 +326,7 @@ export default function CreateReview() {
                 <button
                   type="submit"
                   disabled={createMutation.isPending || !selectedOrder || !comment.trim()}
-                  className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105"
+                  className="w-full bg-primary hover:bg-opacity-90 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105"
                 >
                   {createMutation.isPending ? (
                     <span className="flex items-center justify-center gap-2">

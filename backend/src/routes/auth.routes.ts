@@ -5,6 +5,7 @@ import {
   getMe,
   updateProfile,
   changePassword,
+  verifyEmail,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
@@ -47,6 +48,31 @@ const router = Router();
  *         description: Validation error or user already exists
  */
 router.post('/register', register);
+
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   post:
+ *     summary: Verify email address
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *       400:
+ *         description: Invalid or expired token
+ */
+router.post('/verify-email', verifyEmail);
 
 /**
  * @swagger
@@ -120,7 +146,7 @@ router.get('/me', authenticate, getMe);
  *       401:
  *         description: Not authenticated
  */
-router.put('/profile', authenticate, updateProfile);
+router.patch('/profile', authenticate, updateProfile);
 
 /**
  * @swagger

@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
 import bcrypt from 'bcrypt';
+import { sendTierUpgradeEmail, sendDeliveryEmail } from '../utils/email.util';
+import { sendDeliverySMS, sendTierUpgradeSMS } from '../utils/sms.util';
 
 const prisma = new PrismaClient();
 
@@ -453,9 +455,15 @@ export const getAllOrders = async (
   next: NextFunction
 ) => {
   try {
-    const { status } = req.query;
+    const { status, todayOnly } = req.query;
 
-    const where = status && status !== 'ALL' ? { status: status as any } : {};
+    const where: any = status && status !== 'ALL' ? { status: status as any } : {};
+
+    if (todayOnly === 'true') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      where.createdAt = { gte: today };
+    }
 
     const orders = await prisma.order.findMany({
       where,
@@ -626,25 +634,90 @@ export const updateOrderStatus = async (
       case 'READY':
         timestampUpdates.readyAt = new Date();
         if (userId) timestampUpdates.readyBy = userId;
+        // Also mark all items as completed if manually moved to READY
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
         break;
       case 'SERVED':
         timestampUpdates.deliveredAt = new Date();
         if (userId) timestampUpdates.deliveredBy = userId;
         timestampUpdates.completedAt = new Date();
+        // Ensure all items marked completed
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
         break;
       case 'OUT_FOR_DELIVERY':
         timestampUpdates.readyAt = new Date();
         if (userId) timestampUpdates.readyBy = userId;
         timestampUpdates.outForDeliveryAt = new Date();
         if (userId) timestampUpdates.outForDeliveryBy = userId;
+
+        // Ensure all items marked completed
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
+
+        // Trigger SMS notification
+        // Fetch order to get userId if it's not available in scope
+        const orderToNotify = await prisma.order.findUnique({
+          where: { id },
+          select: { userId: true }
+        });
+
+        if (orderToNotify?.userId) {
+          const customer = await prisma.user.findUnique({
+            where: { id: orderToNotify.userId },
+            select: { phone: true, email: true, notificationPreference: true }
+          });
+
+          if (customer) {
+            const pref = customer.notificationPreference;
+            if ((pref === 'sms' || pref === 'both') && customer.phone) {
+              await sendDeliverySMS(customer.phone, id);
+            }
+            if ((pref === 'email' || pref === 'both') && customer.email) {
+              await sendDeliveryEmail(customer.email, id);
+            }
+          }
+        }
+
         break;
       case 'DELIVERED':
         timestampUpdates.deliveredAt = new Date();
         if (userId) timestampUpdates.deliveredBy = userId;
         timestampUpdates.completedAt = new Date();
+        // Ensure all items marked completed
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
         break;
       case 'COMPLETED':
         timestampUpdates.completedAt = new Date();
+        await prisma.orderItem.updateMany({
+          where: { orderId: id, completedAt: null },
+          data: {
+            completedAt: new Date(),
+            completedBy: userId,
+          },
+        });
         break;
       case 'CANCELLED':
         timestampUpdates.cancelledAt = new Date();
@@ -712,6 +785,9 @@ export const updateOrderStatus = async (
       },
     });
 
+    // Emit real-time notification
+    io.emit('order-updated', updatedOrder);
+
     res.json({
       success: true,
       data: { order: updatedOrder },
@@ -753,7 +829,7 @@ async function awardLoyaltyPoints(orderId: string) {
         orderId,
         points,
         type: 'earned',
-        reason: `Order #${order.orderNumber}`,
+        reason: `Order #${order.orderNumber} `,
       },
     });
 
@@ -785,6 +861,21 @@ async function awardLoyaltyPoints(orderId: string) {
           reason: `${newTier.toUpperCase()} tier achieved!`,
         },
       });
+
+      const user = await prisma.user.findUnique({
+        where: { id: order.userId },
+        select: { email: true, phone: true, notificationPreference: true }
+      });
+
+      if (user) {
+        const pref = user.notificationPreference;
+        if ((pref === 'email' || pref === 'both') && user.email) {
+          await sendTierUpgradeEmail(user.email, newTier, bonusPoints);
+        }
+        if ((pref === 'sms' || pref === 'both') && user.phone) {
+          await sendTierUpgradeSMS(user.phone, newTier, bonusPoints);
+        }
+      }
     }
   } catch (error) {
     console.error('Error awarding loyalty points:', error);
@@ -858,10 +949,12 @@ export const updateOrderItemStatus = async (
           updateData.outForDeliveryAt = new Date();
         }
 
-        await prisma.order.update({
+        const updatedOrder = await prisma.order.update({
           where: { id: item.orderId },
           data: updateData,
         });
+        // Emit real-time notification
+        io.emit('order-updated', updatedOrder);
       }
     }
 
@@ -896,6 +989,9 @@ export const cancelOrder = async (
         cancellationReason: reason,
       },
     });
+
+    // Emit real-time notification
+    io.emit('order-updated', order);
 
     res.json({
       success: true,
@@ -945,7 +1041,7 @@ export const updateUserRole = async (
 
     res.json({
       success: true,
-      message: `User role updated to ${role}`,
+      message: `User role updated to ${role} `,
       data: { user: updatedUser },
     });
   } catch (error) {

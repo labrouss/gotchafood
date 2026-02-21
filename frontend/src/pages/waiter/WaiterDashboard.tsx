@@ -52,11 +52,14 @@ export default function WaiterDashboard() {
   const addToast = useToastStore((state) => state.addToast);
   const [paymentSession, setPaymentSession] = useState<any>(null);
 
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5000);
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['waiterDashboard'],
     queryFn: waiterAPI.getDashboard,
     enabled: !!user && user.role === 'STAFF',
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: autoRefresh ? refreshInterval : false,
   });
 
   const startSessionMutation = useMutation({
@@ -156,42 +159,59 @@ export default function WaiterDashboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-100 pb-20">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">
-            👔 Waiter Dashboard
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Hello {user.firstName}! {shift?.status === 'ACTIVE' ? '🟢 On Shift' : '⚪ Off Shift'}
-          </p>
-        </div>
+      <div className="bg-white shadow-sm sticky top-0 z-20 border-b p-4 mb-4">
+        <div className="container mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">
+              👔 Waiter Dashboard
+            </h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">
+              Hello {user.firstName}! {shift?.status === 'ACTIVE' ? '🟢 On Shift' : '⚪ Off Shift'}
+            </p>
+          </div>
 
-        {/* Clock In/Out */}
-        <div>
-          {!shift || shift.status === 'SCHEDULED' ? (
-            <button
-              onClick={() => clockInMutation.mutate()}
-              disabled={clockInMutation.isPending}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-            >
-              🟢 Clock In
-            </button>
-          ) : shift.status === 'ACTIVE' ? (
-            <button
-              onClick={() => clockOutMutation.mutate()}
-              disabled={clockOutMutation.isPending}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700"
-            >
-              🔴 Clock Out
-            </button>
-          ) : null}
+          {/* Clock In/Out & Auto Refresh */}
+          <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border">
+               <label className="flex items-center gap-1 cursor-pointer whitespace-nowrap">
+                 <input type="checkbox" checked={autoRefresh} onChange={e => setAutoRefresh(e.target.checked)} className="w-4 h-4" />
+                 <span className="font-semibold text-sm">Auto-Refresh</span>
+               </label>
+               {autoRefresh && (
+                 <select value={refreshInterval} onChange={e => setRefreshInterval(Number(e.target.value))} className="border rounded px-1 py-1 text-sm">
+                   <option value={3000}>3s</option>
+                   <option value={5000}>5s</option>
+                   <option value={10000}>10s</option>
+                   <option value={30000}>30s</option>
+                 </select>
+               )}
+            </div>
+            {!shift || shift.status === 'SCHEDULED' ? (
+              <button
+                onClick={() => clockInMutation.mutate()}
+                disabled={clockInMutation.isPending}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 w-full md:w-auto text-sm"
+              >
+                🟢 Clock In
+              </button>
+            ) : shift.status === 'ACTIVE' ? (
+              <button
+                onClick={() => clockOutMutation.mutate()}
+                disabled={clockOutMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 w-full md:w-auto text-sm"
+              >
+                🔴 Clock Out
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 
+      <div className="container mx-auto px-4">
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
         <div className="bg-blue-50 rounded-lg shadow p-4">
           <div className="text-blue-600 text-sm">Active Tables</div>
           <div className="text-3xl font-bold text-blue-700">{stats.activeTables || 0}</div>
@@ -228,17 +248,17 @@ export default function WaiterDashboard() {
                   onClick={() => {
                     navigate('/admin/tables-management');
                   }}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold w-full md:w-auto"
                 >
                   🪑 View Tables & Start Walk-in
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                 {sessions.map((session: any) => (
                   <div
                     key={session.id}
-                    className="bg-white rounded-lg shadow hover:shadow-lg transition cursor-pointer"
+                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition cursor-pointer flex flex-col"
                   //onClick={() => navigate(`/waiter/session/${session.id}`)}
                   >
                     <div className="p-4">
@@ -284,15 +304,15 @@ export default function WaiterDashboard() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex gap-2 mt-4">
+                      <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/waiter/take-order/${session.id}`);
                           }}
-                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded font-semibold text-sm hover:bg-blue-700"
                         >
-                          📋 View Details / Take Order
+                          📋 View / Order
                         </button>
                         <button
                           onClick={(e) => {
@@ -301,7 +321,7 @@ export default function WaiterDashboard() {
                               setPaymentSession(session);
                             }
                           }}
-                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                          className="px-3 py-2 bg-green-600 text-white rounded font-semibold text-sm hover:bg-green-700"
                         >
                           ✓ Complete
                         </button>
@@ -355,6 +375,7 @@ export default function WaiterDashboard() {
           </div>
         </div>
       )}
+      </div>
       {/* Payment Modal */}
       {paymentSession && (
         <PaymentModal

@@ -12,11 +12,23 @@ export default function LoyaltyCard() {
   const { storeName } = useTheme(); // Get storeName
   const [qrDataUrl, setQrDataUrl] = useState('');
 
-  const { data: rewardData, isLoading } = useQuery({
+  const { data: rewardData, isLoading: loyaltyLoading } = useQuery({
     queryKey: ['my-loyalty'],
     queryFn: loyaltyAPI.getMyLoyalty,
     enabled: !!user && user.role === 'CUSTOMER',
   });
+
+  const { data: tokenData, isLoading: tokenLoading } = useQuery({
+    queryKey: ['loyalty-token'],
+    queryFn: loyaltyAPI.getLoyaltyToken,
+    // Refresh token every 4 minutes (it expires in 5)
+    refetchInterval: 4 * 60 * 1000,
+    enabled: !!user && user.role === 'CUSTOMER',
+  });
+
+  const loyalty = rewardData?.data?.loyalty;
+  const qrData = tokenData?.data?.token || user?.phone || '';
+  const isLoading = loyaltyLoading || tokenLoading;
 
   useEffect(() => {
     if (!user || user.role !== 'CUSTOMER') {
@@ -164,7 +176,7 @@ export default function LoyaltyCard() {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }

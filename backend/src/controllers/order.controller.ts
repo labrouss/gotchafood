@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../middleware/error.middleware';
+import { io } from '../server';
 
 const prisma = new PrismaClient();
 
@@ -81,9 +82,29 @@ export const createOrder = async (
       };
     });
 
+    // Calculate loyalty discount
+    const loyalty = await prisma.loyaltyReward.findUnique({
+      where: { userId: req.user.id },
+    });
+
+    let discountPercent = 0;
+    let appliedTier = null;
+
+    if (loyalty) {
+      const tier = await prisma.loyaltyTier.findFirst({
+        where: { name: loyalty.tier, isActive: true },
+      });
+      if (tier) {
+        discountPercent = tier.discount;
+        appliedTier = tier.name;
+      }
+    }
+
+    const discountAmount = (subtotal * discountPercent) / 100;
+
     // Calculate delivery fee (free delivery over €15)
     const deliveryFee = subtotal >= 15 ? 0 : 2.5;
-    const totalAmount = subtotal + deliveryFee;
+    const totalAmount = subtotal + deliveryFee - discountAmount;
 
     // Generate unique order number
     const orderNumber = `ONL-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
@@ -98,6 +119,8 @@ export const createOrder = async (
           status: 'PENDING',
           subtotal,
           deliveryFee,
+          discountAmount,
+          appliedTier,
           totalAmount,
           notes: data.notes,
           items: {
@@ -126,6 +149,9 @@ export const createOrder = async (
 
       return newOrder;
     });
+
+    // Emit real-time notification
+    io.emit('new-order', order);
 
     res.status(201).json({
       success: true,

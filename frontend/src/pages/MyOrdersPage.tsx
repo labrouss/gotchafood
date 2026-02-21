@@ -44,7 +44,7 @@ export default function MyOrdersPage() {
   }
 
   const orders = data?.data?.orders || [];
-  
+
   // Create a set of reviewed order IDs
   const reviewedOrderIds = new Set(
     (reviewsData?.data?.reviews || [])
@@ -66,7 +66,7 @@ export default function MyOrdersPage() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       ) : orders.length === 0 ? (
         <div className="text-center py-12">
@@ -77,7 +77,7 @@ export default function MyOrdersPage() {
           </p>
           <button
             onClick={() => navigate('/menu')}
-            className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-lg font-semibold"
+            className="bg-primary hover:bg-opacity-90 text-white px-8 py-3 rounded-lg font-semibold"
           >
             Περιηγηθείτε στο Μενού
           </button>
@@ -102,9 +102,8 @@ export default function MyOrdersPage() {
                   </p>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                    statusColors[order.status]
-                  }`}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[order.status]
+                    }`}
                 >
                   {statusLabels[order.status]}
                 </span>
@@ -140,9 +139,15 @@ export default function MyOrdersPage() {
                         : `€${parseFloat(order.deliveryFee).toFixed(2)}`}
                     </span>
                   </div>
+                  {parseFloat(order.discountAmount) > 0 && (
+                    <div className="flex justify-between text-sm mb-2 text-green-600">
+                      <span>Έκπτωση Loyalty ({order.appliedTier})</span>
+                      <span>-€{parseFloat(order.discountAmount).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-lg">
                     <span>Σύνολο</span>
-                    <span className="text-red-600">
+                    <span className="text-primary">
                       €{parseFloat(order.totalAmount).toFixed(2)}
                     </span>
                   </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { addressAPI, orderAPI } from '../services/api';
+import { addressAPI, orderAPI, loyaltyAPI } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 
@@ -9,10 +9,16 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const cart = useCartStore();
   const user = useAuthStore((state) => state.user);
-  
+
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'ONLINE'>('CASH');
   const [notes, setNotes] = useState('');
+
+  const { data: loyaltyData } = useQuery({
+    queryKey: ['my-loyalty'],
+    queryFn: loyaltyAPI.getMyLoyalty,
+    enabled: !!user,
+  });
 
   const { data: addressesData } = useQuery({
     queryKey: ['addresses'],
@@ -33,8 +39,11 @@ export default function CheckoutPage() {
 
   const addresses = addressesData?.data?.addresses || [];
   const subtotal = cart.getTotal();
+  const loyalty = loyaltyData?.data?.loyalty;
+  const discountPercent = loyalty?.discountPercent || 0;
+  const discountAmount = (subtotal * discountPercent) / 100;
   const deliveryFee = subtotal >= 15 ? 0 : 2.5;
-  const total = subtotal + deliveryFee;
+  const total = subtotal + deliveryFee - discountAmount;
 
   const handlePlaceOrder = () => {
     if (!selectedAddressId) {
@@ -75,7 +84,7 @@ export default function CheckoutPage() {
           {/* Delivery Address */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold mb-4">Διεύθυνση Παράδοσης</h2>
-            
+
             {addresses.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-600 mb-4">
@@ -93,11 +102,10 @@ export default function CheckoutPage() {
                 {addresses.map((address: any) => (
                   <label
                     key={address.id}
-                    className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
-                      selectedAddressId === address.id
-                        ? 'border-red-600 bg-red-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`block p-4 border-2 rounded-lg cursor-pointer transition ${selectedAddressId === address.id
+                      ? 'border-red-600 bg-red-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                   >
                     <input
                       type="radio"
@@ -163,7 +171,7 @@ export default function CheckoutPage() {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-lg shadow p-6 sticky top-4">
             <h2 className="text-xl font-bold mb-4">Σύνοψη</h2>
-            
+
             <div className="space-y-2 mb-4 pb-4 border-b">
               {cart.items.map((item) => (
                 <div key={item.menuItemId} className="flex justify-between text-sm">
@@ -182,17 +190,23 @@ export default function CheckoutPage() {
                 <span>Παράδοση</span>
                 <span>{deliveryFee === 0 ? 'Δωρεάν' : `€${deliveryFee.toFixed(2)}`}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Έκπτωση Loyalty ({loyalty?.tier})</span>
+                  <span>-€{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between font-bold text-xl mb-6">
               <span>Σύνολο</span>
-              <span className="text-red-600">€{total.toFixed(2)}</span>
+              <span className="text-primary">€{total.toFixed(2)}</span>
             </div>
 
             <button
               onClick={handlePlaceOrder}
               disabled={placeOrderMutation.isPending || !selectedAddressId}
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary hover:bg-opacity-90 text-white py-3 rounded-lg font-semibold text-lg disabled:bg-gray-400 transition"
             >
               {placeOrderMutation.isPending ? 'Υποβολή...' : 'Ολοκλήρωση Παραγγελίας'}
             </button>

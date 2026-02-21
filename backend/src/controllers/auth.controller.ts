@@ -3,7 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import crypto from 'crypto';
 import { AppError } from '../middleware/error.middleware';
+import { sendVerificationEmail } from '../utils/email.util';
 
 const prisma = new PrismaClient();
 
@@ -14,6 +16,7 @@ const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   phone: z.string().optional(),
+  notificationPreference: z.enum(['email', 'sms', 'both']).default('email'),
 });
 
 const loginSchema = z.object({
@@ -52,6 +55,9 @@ export const register = async (
     const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
     // Create user
+    const emailVerifyToken = crypto.randomBytes(32).toString('hex');
+    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -59,6 +65,9 @@ export const register = async (
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         phone: validatedData.phone,
+        notificationPreference: validatedData.notificationPreference,
+        emailVerifyToken,
+        emailVerifyExpiry
       },
       select: {
         id: true,
@@ -74,13 +83,58 @@ export const register = async (
     // Generate token
     const token = generateToken(user.id, user.email, user.role);
 
+    // Send verification email
+    const emailSent = await sendVerificationEmail(user.email, emailVerifyToken);
+
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: emailSent
+        ? 'User registered successfully. Please verify your email.'
+        : 'User registered successfully, but there was an error sending the verification email. Please contact support.',
       data: {
         user,
         token,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      throw new AppError('Verification token is required', 400);
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerifyToken: token,
+        emailVerifyExpiry: { gt: new Date() },
+      },
+    });
+
+    if (!user) {
+      throw new AppError('Invalid or expired verification token', 400);
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifyToken: null,
+        emailVerifyExpiry: null,
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
     });
   } catch (error) {
     next(error);
@@ -143,6 +197,7 @@ export const login = async (
           firstName: user.firstName,
           lastName: user.lastName,
           phone: user.phone,
+          notificationPreference: user.notificationPreference,
           role: user.role,
           isActive: user.isActive,
           createdAt: user.createdAt,
@@ -173,7 +228,9 @@ export const getMe = async (
         firstName: true,
         lastName: true,
         phone: true,
+        notificationPreference: true,
         role: true,
+        isActive: true,
         createdAt: true,
       },
     });
@@ -202,9 +259,20 @@ export const updateProfile = async (
     }
 
     const updateSchema = z.object({
-      firstName: z.string().min(2).optional(),
-      lastName: z.string().min(2).optional(),
-      phone: z.string().optional(),
+      email: z.string().email().optional().or(z.literal('')),
+      firstName: z.string().min(2).optional().or(z.literal('')),
+      lastName: z.string().min(2).optional().or(z.literal('')),
+      phone: z.string().optional().or(z.literal('')),
+      notificationPreference: z.enum(['email', 'sms', 'both']).optional(),
+    }).transform((data) => {
+      // Remove empty strings so they don't trigger validation or update issues
+      const cleaned: any = {};
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== '' && value !== undefined) {
+          cleaned[key] = value;
+        }
+      });
+      return cleaned;
     });
 
     const validatedData = updateSchema.parse(req.body);
@@ -218,6 +286,7 @@ export const updateProfile = async (
         firstName: true,
         lastName: true,
         phone: true,
+        notificationPreference: true,
         role: true,
       },
     });

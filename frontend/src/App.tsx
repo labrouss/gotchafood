@@ -28,6 +28,7 @@ import DeliveryDashboard from './pages/delivery/DeliveryDashboard';
 import CreateReview from './pages/reviews/CreateReview';
 import MyReviews from './pages/reviews/MyReviews';
 import LoyaltyPage from './pages/loyalty/LoyaltyPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import ToastContainer from './components/ToastContainer';
 
 
@@ -242,6 +243,7 @@ function AppContent() {
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/my-orders" element={<MyOrdersPage />} />

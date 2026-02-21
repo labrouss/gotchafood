@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { io } from '../server';
 
 const prisma = new PrismaClient();
 
@@ -299,6 +300,31 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
       return sum + (item.price * item.quantity);
     }, 0);
 
+    // Calculate loyalty discount
+    let discountAmount = 0;
+    let appliedTier = null;
+    let customerIdForOrder = waiterId;
+
+    if (loyaltyPhone) {
+      const customer = await prisma.user.findFirst({
+        where: { phone: loyaltyPhone },
+        include: { loyaltyReward: true },
+      });
+
+      if (customer) {
+        customerIdForOrder = customer.id;
+        if (customer.loyaltyReward) {
+          const tier = await prisma.loyaltyTier.findFirst({
+            where: { name: customer.loyaltyReward.tier, isActive: true },
+          });
+          if (tier) {
+            discountAmount = (subtotal * tier.discount) / 100;
+            appliedTier = tier.name;
+          }
+        }
+      }
+    }
+
     // Generate order number
     const orderCount = await prisma.order.count({
       where: {
@@ -310,7 +336,7 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
     // Create order
     const order = await prisma.order.create({
       data: {
-        userId: waiterId, // Temporary - waiter creates order
+        userId: customerIdForOrder, // Use customer ID if found by phone
         orderNumber,
         orderType: 'WAITER',
         orderSource: 'waiter',
@@ -320,7 +346,9 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
         loyaltyPhone,
         status: 'CONFIRMED',
         subtotal,
-        totalAmount: subtotal,
+        discountAmount,
+        appliedTier,
+        totalAmount: subtotal - discountAmount,
         notes,
         isPaid: false,
         items: {
@@ -345,6 +373,9 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
         },
       },
     });
+
+    // Emit real-time notification
+    io.emit('new-order', order);
 
     res.status(201).json({
       success: true,
@@ -396,6 +427,9 @@ export const markOrderServed = async (req: Request, res: Response, next: NextFun
         },
       },
     });
+
+    // Emit real-time notification
+    io.emit('order-updated', updatedOrder);
 
     res.json({
       success: true,
@@ -471,6 +505,9 @@ export const addItemsToOrder = async (req: Request, res: Response, next: NextFun
         },
       },
     });
+
+    // Emit real-time notification
+    io.emit('order-updated', updatedOrder);
 
     res.json({
       success: true,

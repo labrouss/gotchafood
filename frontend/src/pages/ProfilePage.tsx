@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useMutation } from '@tantml:react-query';
+import { useState, useEffect } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
@@ -7,12 +7,19 @@ import { authAPI } from '../services/api';
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, setUser } = useAuthStore();
-  
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
+
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phone: user?.phone || '',
     email: user?.email || '',
+    notificationPreference: user?.notificationPreference || 'email', // Default to email
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -21,8 +28,31 @@ export default function ProfilePage() {
     confirmPassword: '',
   });
 
+  const updateProfileMutation = useMutation({
+    mutationFn: authAPI.updateProfile,
+    onSuccess: (response) => {
+      setUser({ ...user!, ...response.data.user });
+      alert('✅ Το προφίλ ενημερώθηκε επιτυχώς!');
+    },
+    onError: (error: any) => {
+      console.error('Update profile error:', error);
+      alert('❌ ' + (error.response?.data?.message || 'Σφάλμα κατά την ενημέρωση'));
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: any) => authAPI.changePassword(data),
+    onSuccess: () => {
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      alert('✅ Ο κωδικός άλλαξε επιτυχώς!');
+    },
+    onError: (error: any) => {
+      console.error('Change password error:', error);
+      alert('❌ ' + (error.response?.data?.message || 'Σφάλμα κατά την αλλαγή κωδικού'));
+    },
+  });
+
   if (!user) {
-    navigate('/login');
     return null;
   }
 
@@ -78,28 +108,32 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">
-                    Τηλέφωνο *
+                    Προτίμηση Ενημερώσεων
                   </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
+                  <select
+                    value={formData.notificationPreference}
                     onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
+                      setFormData({ ...formData, notificationPreference: e.target.value })
                     }
-                    className="w-full border rounded-lg px-4 py-2"
-                  />
+                    className="w-full border rounded-lg px-4 py-2 bg-white"
+                  >
+                    <option value="email">Email μόνο</option>
+                    <option value="sms">SMS μόνο</option>
+                    <option value="both">Και τα δύο</option>
+                  </select>
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold"
+                disabled={updateProfileMutation.isPending}
+                className="bg-primary hover:bg-opacity-90 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('⚠️ Feature coming soon! Profile update will be implemented shortly.');
+                  updateProfileMutation.mutate(formData);
                 }}
               >
-                Ενημέρωση Προφίλ
+                {updateProfileMutation.isPending ? 'Ενημέρωση...' : 'Ενημέρωση Προφίλ'}
               </button>
             </form>
           </div>
@@ -150,13 +184,21 @@ export default function ProfilePage() {
 
               <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold"
+                disabled={changePasswordMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50"
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('⚠️ Feature coming soon! Password change will be implemented shortly.');
+                  if (passwordData.newPassword !== passwordData.confirmPassword) {
+                    alert('❌ Οι κωδικοί δεν ταιριάζουν');
+                    return;
+                  }
+                  changePasswordMutation.mutate({
+                    currentPassword: passwordData.currentPassword,
+                    newPassword: passwordData.newPassword,
+                  });
                 }}
               >
-                Αλλαγή Κωδικού
+                {changePasswordMutation.isPending ? 'Αλλαγή...' : 'Αλλαγή Κωδικού'}
               </button>
             </form>
           </div>
@@ -170,9 +212,9 @@ export default function ProfilePage() {
               <div>
                 <p className="text-sm text-gray-600">Ρόλος</p>
                 <p className="font-semibold">
-                  {user.role === 'ADMIN' ? '👑 Διαχειριστής' : 
-                   user.role === 'STAFF' ? '⚙️ Προσωπικό' : 
-                   '👤 Πελάτης'}
+                  {user.role === 'ADMIN' ? '👑 Διαχειριστής' :
+                    user.role === 'STAFF' ? '⚙️ Προσωπικό' :
+                      '👤 Πελάτης'}
                 </p>
               </div>
               <div>
@@ -183,6 +225,22 @@ export default function ProfilePage() {
                   ) : (
                     <span className="text-red-600">❌ Ανενεργός</span>
                   )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Email Status</p>
+                <p className="font-semibold">
+                  {user.emailVerified ? (
+                    <span className="text-green-600">✅ Επαληθευμένο</span>
+                  ) : (
+                    <span className="text-orange-600">⏳ Εκκρεμεί Επαλήθευση</span>
+                  )}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Ειδοποιήσεις</p>
+                <p className="font-semibold capitalize">
+                  {user.notificationPreference === 'both' ? 'Email & SMS' : user.notificationPreference}
                 </p>
               </div>
               <div>

@@ -26,6 +26,7 @@ model User {
   phoneVerifyCode    String?   @map("phone_verify_code")
   phoneVerifyExpiry  DateTime? @map("phone_verify_expiry")
   routingRole        String?   @map("routing_role")
+  notificationPreference String   @default("email") @map("notification_preference")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -149,6 +150,8 @@ model Order {
   status             OrderStatus @default(PENDING)
   subtotal           Decimal     @db.Decimal(10, 2)
   deliveryFee        Decimal     @default(0) @map("delivery_fee") @db.Decimal(10, 2)
+  discountAmount     Decimal     @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  appliedTier        String?     @map("applied_tier")
   totalAmount        Decimal     @map("total_amount") @db.Decimal(10, 2)
   pointsEarned       Int         @default(0) @map("points_earned")
   notes              String?     @db.Text
