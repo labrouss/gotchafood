@@ -13,7 +13,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@tanstack/react-query": "^5.60.0",
     "axios": "1.7.9",
-    "expo": "54.0.00",
+    "expo": "54.0.33",
     "expo-constants": "~18.0.13",
     "expo-device": "~8.0.10",
     "expo-notifications": "~0.32.16",
@@ -31,7 +31,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@types/react": "~19.1.10",
+    "react-native-dotenv": "^3.4.11",
     "typescript": "~5.9.2"
   }
 }

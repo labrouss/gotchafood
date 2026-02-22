@@ -1,14 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authAPI } from '../services/api';
-
-// Custom storage adapter for Expo SecureStore
-const secureStorage = {
-  getItem: (name: string) => SecureStore.getItemAsync(name),
-  setItem: (name: string, value: string) => SecureStore.setItemAsync(name, value),
-  removeItem: (name: string) => SecureStore.deleteItemAsync(name),
-};
 
 interface User {
   id: string;
@@ -32,22 +25,46 @@ export const useAuthStore = create<AuthState>()(
       token: null,
 
       login: async (email: string, password: string) => {
-        // FIX: Trim email to prevent Zod validation errors from trailing spaces
-        const cleanEmail = email.trim().toLowerCase();
+        console.log('🔐 Attempting login for:', email);
         
-        const response = await authAPI.login(cleanEmail, password);
-        const { token, user } = response.data;
-        
-        set({ token, user });
+        try {
+          const response = await authAPI.login(email.trim().toLowerCase(), password);
+          console.log('✅ Login response:', response.data);
+          
+          // ✅ FIX: Response structure is { data: { token, user }, success, message }
+          // So we need response.data.data to get the actual token and user
+          const { data } = response.data;
+          
+          if (!data || !data.token || !data.user) {
+            console.error('❌ Invalid response structure:', response.data);
+            throw new Error('Invalid response from server');
+          }
+          
+          const { token, user } = data;
+          
+          console.log('✅ Token received:', token.substring(0, 20) + '...');
+          console.log('✅ User:', user.email, user.role);
+          
+          set({ token, user });
+          console.log('✅ Auth state updated');
+        } catch (error: any) {
+          console.error('❌ Login error:', error.response?.data || error.message);
+          throw error;
+        }
       },
 
-      logout: () => {
-        set({ token: null, user: null });
-      },
+      logout: async () => {
+  console.log('👋 Logging out');
+  set({ token: null, user: null });
+
+  // Wait for storage to clear
+  await AsyncStorage.removeItem('auth-storage');
+  console.log('✅ Storage cleared');
+},
     }),
     {
-      name: 'auth-storage', // unique key
-      storage: createJSONStorage(() => secureStorage),
+      name: 'auth-storage',
+      storage: createJSONStorage(() => AsyncStorage),
     }
   )
 );

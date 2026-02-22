@@ -3,10 +3,12 @@ import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
     KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
+import { useRouter } from 'expo-router';  // ← ADD THIS
 import { useAuthStore } from '../../store/authStore';
 
 export default function LoginScreen() {
     const { login } = useAuthStore();
+    const router = useRouter();  // ← ADD THIS
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,8 +21,25 @@ export default function LoginScreen() {
         setLoading(true);
         try {
             await login(email.trim().toLowerCase(), password);
+            console.log('✅ Login successful - Navigating to app');
+            
+            // ✅ Navigate after successful login
+            router.replace('/(app)');
+            
         } catch (err: any) {
-            Alert.alert('Login Failed', err?.response?.data?.message || 'Invalid credentials');
+            console.error('❌ Login failed:', err);
+            
+            let message = 'Invalid credentials';
+            
+            if (err.response) {
+                message = err.response.data?.message || `Error ${err.response.status}`;
+            } else if (err.request) {
+                message = 'Cannot connect to server. Check your network connection.';
+            } else {
+                message = err.message || 'Unknown error';
+            }
+            
+            Alert.alert('Login Failed', message);
         } finally {
             setLoading(false);
         }
