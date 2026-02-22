@@ -1,0 +1,14 @@
+/* eslint-disable */
+import * as Router from 'expo-router';
+
+export * from 'expo-router';
+
+declare module 'expo-router' {
+  export namespace ExpoRouter {
+    export interface __routes<T extends string | object = string> {
+      hrefInputParams: { pathname: Router.RelativePathString, params?: Router.UnknownInputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownInputParams } | { pathname: `/_sitemap`; params?: Router.UnknownInputParams; } | { pathname: `${'/(app)'}` | `/`; params?: Router.UnknownInputParams; } | { pathname: `${'/(auth)'}/login` | `/login`; params?: Router.UnknownInputParams; } | { pathname: `${'/(app)'}/order-detail/[orderId]` | `/order-detail/[orderId]`, params: Router.UnknownInputParams & { orderId: string | number; } } | { pathname: `${'/(app)'}/take-order/[tableId]` | `/take-order/[tableId]`, params: Router.UnknownInputParams & { tableId: string | number; } };
+      hrefOutputParams: { pathname: Router.RelativePathString, params?: Router.UnknownOutputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownOutputParams } | { pathname: `/_sitemap`; params?: Router.UnknownOutputParams; } | { pathname: `${'/(app)'}` | `/`; params?: Router.UnknownOutputParams; } | { pathname: `${'/(auth)'}/login` | `/login`; params?: Router.UnknownOutputParams; } | { pathname: `${'/(app)'}/order-detail/[orderId]` | `/order-detail/[orderId]`, params: Router.UnknownOutputParams & { orderId: string; } } | { pathname: `${'/(app)'}/take-order/[tableId]` | `/take-order/[tableId]`, params: Router.UnknownOutputParams & { tableId: string; } };
+      href: Router.RelativePathString | Router.ExternalPathString | `/_sitemap${`?${string}` | `#${string}` | ''}` | `${'/(app)'}${`?${string}` | `#${string}` | ''}` | `/${`?${string}` | `#${string}` | ''}` | `${'/(auth)'}/login${`?${string}` | `#${string}` | ''}` | `/login${`?${string}` | `#${string}` | ''}` | { pathname: Router.RelativePathString, params?: Router.UnknownInputParams } | { pathname: Router.ExternalPathString, params?: Router.UnknownInputParams } | { pathname: `/_sitemap`; params?: Router.UnknownInputParams; } | { pathname: `${'/(app)'}` | `/`; params?: Router.UnknownInputParams; } | { pathname: `${'/(auth)'}/login` | `/login`; params?: Router.UnknownInputParams; } | `${'/(app)'}/order-detail/${Router.SingleRoutePart<T>}${`?${string}` | `#${string}` | ''}` | `/order-detail/${Router.SingleRoutePart<T>}${`?${string}` | `#${string}` | ''}` | `${'/(app)'}/take-order/${Router.SingleRoutePart<T>}${`?${string}` | `#${string}` | ''}` | `/take-order/${Router.SingleRoutePart<T>}${`?${string}` | `#${string}` | ''}` | { pathname: `${'/(app)'}/order-detail/[orderId]` | `/order-detail/[orderId]`, params: Router.UnknownInputParams & { orderId: string | number; } } | { pathname: `${'/(app)'}/take-order/[tableId]` | `/take-order/[tableId]`, params: Router.UnknownInputParams & { tableId: string | number; } };
+    }
+  }
+}

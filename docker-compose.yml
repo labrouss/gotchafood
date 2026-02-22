@@ -53,8 +53,6 @@ services:
     working_dir: /app
     ports:
       - "5173:5173"
-    environment:
-      VITE_API_URL: http://10.1.11.35:3000
     volumes:
       - ./frontend:/app
     depends_on:
@@ -62,6 +60,33 @@ services:
     networks:
       - food-ordering-network
     command: sh -c "npm install && npm run dev -- --host"
+
+  # Waiter Mobile App (Expo Dev Server — tunnel mode for remote device access)
+  expo-mobile:
+    image: node:20-slim
+    container_name: food-ordering-mobile
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "8081:8081"   # Metro bundler
+      - "19000:19000" # Expo dev tools
+      - "19001:19001" # Expo inspector
+      - "19006:19006" # Expo simulator
+    environment:
+      TERM: xterm-256color
+      API_URL: http://dockerhost.hpehellas-demo.com:3000
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      REACT_NATIVE_PACKAGER_HOSTNAME: dockerhost.hpehellas-demo.com
+      CI: "false"
+      NGROK_AUTHTOKEN : 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N
+    volumes:
+      - ./mobile:/app
+    depends_on:
+      - backend
+    networks:
+      - food-ordering-network
+    command: sh -c "npm install -g @expo/ngrok@4.1.0 && rm -rf node_modules && npm install --legacy-peer-deps && npm install @ngrok/ngrok && npx ngrok config add-authtoken 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N && npx expo start --tunnel"
+    #command: sh -c "npx expo start --tunnel"
 
   # phpMyAdmin (optional - for database management)
   phpmyadmin:
