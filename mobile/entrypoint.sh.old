@@ -1,0 +1,28 @@
+#!/bin/sh
+
+echo "--- 🚀 Starting Mobile Entrypoint ---"
+
+# Step 1: Install dependencies
+# Using --prefer-offline to speed up restarts if possible
+echo "📦 Installing dependencies..."
+npm install --legacy-peer-deps || echo "⚠️ NPM Install failed, attempting to continue..."
+
+# Step 2: Configure Ngrok
+echo "🔑 Configuring Ngrok..."
+if [ ! -z "$NGROK_AUTHTOKEN" ]; then
+    npx ngrok config add-authtoken "$NGROK_AUTHTOKEN"
+fi
+
+# Step 3: Run the App
+echo "✨ Starting Expo..."
+# We use 'exec' so the Node process becomes PID 1 and receives shutdown signals
+# But we wrap it in a subshell so we can catch the exit
+(npx expo start --tunnel --clear)
+
+# --- FALLBACK ---
+if [ $? -ne 0 ]; then
+    echo "❌ Expo crashed with exit code $?"
+    echo "🛠️ Container staying alive for troubleshooting..."
+    echo "💡 Run: 'docker exec -it food-ordering-mobile bash' to debug."
+    tail -f /dev/null
+fi

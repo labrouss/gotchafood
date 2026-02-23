@@ -67,6 +67,7 @@ services:
     container_name: food-ordering-mobile
     restart: unless-stopped
     working_dir: /app
+    entrypoint: ["/bin/sh", "/app/entrypoint.sh"]
     ports:
       - "8081:8081"   # Metro bundler
       - "19000:19000" # Expo dev tools
@@ -79,15 +80,26 @@ services:
       REACT_NATIVE_PACKAGER_HOSTNAME: dockerhost.hpehellas-demo.com
       CI: "false"
       NGROK_AUTHTOKEN : 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N
+      EXPO_TOKEN: Bj7SUqq5Y3BzOMAt0PsVW4oOp5aD6Ww4YOQoptZR
     volumes:
       - ./mobile:/app
     depends_on:
       - backend
     networks:
       - food-ordering-network
-    command: sh -c "npm install -g @expo/ngrok@4.1.0 && rm -rf node_modules && npm install --legacy-peer-deps && npm install @ngrok/ngrok && npx ngrok config add-authtoken 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N && npx expo start --tunnel"
-    #command: sh -c "npx expo start --tunnel"
-
+    #command: sh -c "npm install -g @expo/ngrok@4.1.0 && rm -rf node_modules && npm install --legacy-peer-deps && npm install @ngrok/ngrok && npx ngrok config add-authtoken 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N && npx expo start --tunnel"
+    #command: sh -c "npm install -g @expo/ngrok@4.1.0 && rm -rf node_modules && npm install --legacy-peer-deps && npm install @ngrok/ngrok && npx ngrok config add-authtoken 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N && npx expo start --clear --reset-cache"
+    #command: sh -c "npx expo start --clear"
+    #command: >
+       #sh -c "
+       ## rm -rf node_modules package-lock.json .expo
+       #npm install -g @expo/ngrok@4.1.0 &&
+       #npm install @ngrok/ngrok && 
+       #npx ngrok config add-authtoken 2fDxsvTKKsZjjX3hctYd6dIKykq_826p3Yf6iAm3GZSMd2R2N &&
+       #npm install --legacy-peer-deps && 
+       #npx expo whoami &&
+       #npx expo start --clear
+       #" 
   # phpMyAdmin (optional - for database management)
   phpmyadmin:
     image: phpmyadmin/phpmyadmin

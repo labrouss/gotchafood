@@ -45,6 +45,20 @@ export const getWaiterDashboard = async (req: Request, res: Response, next: Next
       },
     });
 
+    // ✅ ADD: Get available tables
+    const freeTables = await prisma.table.findMany({
+      where: {
+        status: 'AVAILABLE',
+      },
+      select: {
+        id: true,
+        tableNumber: true,
+        capacity: true,
+        location: true,
+        status: true,
+      },
+    });
+
     // Get pending reservations assigned to this waiter
     const pendingReservations = await prisma.tableReservation.findMany({
       where: {
@@ -65,6 +79,7 @@ export const getWaiterDashboard = async (req: Request, res: Response, next: Next
         sessions,
         shift,
         pendingReservations,
+	freeTables,
         stats: {
           activeTables: sessions.length,
           totalRevenue: sessions.reduce((sum, s) => sum + Number(s.totalSpent), 0),

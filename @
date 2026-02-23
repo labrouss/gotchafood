@@ -45,21 +45,26 @@ export const useMenuStore = create<MenuState>((set, get) => ({
             return;
         }
 
+	// ... inside fetchMenu ...
         set({ isLoading: true });
-
         try {
             const [menuRes, catRes] = await Promise.all([
                 menuAPI.getAll(),
                 menuAPI.getCategories(),
             ]);
 
-            // ✅ MAPPING: Based on your curl output, items are in data.menuItems
-            // We check both data.data.menuItems and data.menuItems for safety
-            const items: MenuItem[] = menuRes.data?.data?.menuItems || menuRes.data?.menuItems || [];
-            
-            const categories: Category[] = catRes.data?.data?.categories || catRes.data?.categories || [];
+            // ✅ DEBUG: See what the backend actually sends
+            console.log("📡 API Menu Response:", JSON.stringify(menuRes.data).substring(0, 200));
 
-            console.log(`✅ Loaded ${items.length} items and ${categories.length} categories`);
+            // ✅ FIX: More robust extraction.
+            // Handles [ {...} ] or { data: [...] } or { items: [...] }
+            const items = Array.isArray(menuRes.data)
+                ? menuRes.data
+                : (menuRes.data?.items || menuRes.data?.data || []);
+
+            const categories = Array.isArray(catRes.data)
+                ? catRes.data
+                : (catRes.data?.categories || catRes.data?.data || []);
 
             // Persist to AsyncStorage
             await AsyncStorage.setItem(
@@ -68,24 +73,18 @@ export const useMenuStore = create<MenuState>((set, get) => ({
             );
 
             set({ items, categories, lastFetched: now, isLoading: false });
+
         } catch (error) {
-            console.error("Fetch Menu Error:", error);
-            
-            // On network error, try to load from local cache
+            // On network error, try to load from cache
             try {
                 const cached = await AsyncStorage.getItem(CACHE_KEY);
                 if (cached) {
-                    const parsed = JSON.parse(cached);
-                    set({ 
-                        items: parsed.items || [], 
-                        categories: parsed.categories || [], 
-                        lastFetched: parsed.lastFetched, 
-                        isLoading: false 
-                    });
+                    const { items, categories, lastFetched } = JSON.parse(cached);
+                    set({ items, categories, lastFetched, isLoading: false });
                 } else {
                     set({ isLoading: false });
                 }
-            } catch (cacheError) {
+            } catch {
                 set({ isLoading: false });
             }
         }

@@ -10,11 +10,9 @@ const api = axios.create({
     timeout: 10000,
 });
 
-// ✅ FIX: Attach JWT to every request - read from AsyncStorage
 api.interceptors.request.use(
   async (config) => {
     try {
-      // Read the persisted auth state from AsyncStorage
       const authStorage = await AsyncStorage.getItem('auth-storage');
       
       if (authStorage) {
@@ -43,7 +41,6 @@ api.interceptors.request.use(
   }
 );
 
-// Log responses and errors
 api.interceptors.response.use(
   (response) => {
     console.log('✅ Response:', response.config.url, response.status);
@@ -80,11 +77,18 @@ export const waiterAPI = {
     getDashboard: () => api.get('/waiter/dashboard'),
     clockIn: () => api.post('/waiter/clock-in'),
     clockOut: () => api.post('/waiter/clock-out'),
-    startSession: (data: { tableId: string; partySize: number }) =>
-        api.post('/waiter/sessions/start', data),
-    endSession: (id: string) => api.post(`/waiter/sessions/${id}/end`),
+    
+    // ✅ FIXED: Correct endpoint - no "/start"
+    startSession: (data: { tableId: string; partySize: number; notes?: string }) =>
+        api.post('/waiter/sessions', data),
+    
+    endSession: (sessionId: string, data?: { paymentMethod: string }) => 
+        api.post(`/waiter/sessions/${sessionId}/end`, data),
+    
     createOrder: (sessionId: string, items: any[]) =>
         api.post(`/waiter/sessions/${sessionId}/orders`, { items }),
+    updateOrderStatus: (sessionId: string, orderId: string) => 
+        api.patch(`/waiter/${sessionId}/orders/${orderId}/served`),
 };
 
 // ── Orders ───────────────────────────────────────────────────────────────────
