@@ -182,7 +182,9 @@ export default function KitchenDisplayPage() {
             <h3 className="text-2xl font-bold text-gray-800">
               #{order.orderNumber.split('-')[1]}
             </h3>
-            <p className="text-sm text-gray-500">{order.user.firstName} {order.user.lastName}</p>
+            <p className="text-sm text-gray-500">
+              {order.user ? `${order.user.firstName} ${order.user.lastName}` : order.tableNumber ? `Table ${order.tableNumber}` : 'Waiter Order'}
+            </p>
             <button
               onClick={() => {
                 const stationName = stations.find((s: any) => s.id === selectedStation)?.name || 'Order';

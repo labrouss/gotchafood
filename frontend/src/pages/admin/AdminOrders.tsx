@@ -132,8 +132,12 @@ export default function AdminOrders() {
                     </div>
                     <div className="text-sm text-gray-600 space-y-1">
                       <div>
-                        <span className="font-semibold">Customer:</span> {order.user.firstName}{' '}
-                        {order.user.lastName} ({order.user.email})
+                        <span className="font-semibold">Customer:</span>{' '}
+                        {order.user
+                          ? `${order.user.firstName} ${order.user.lastName} (${order.user.email})`
+                          : order.tableNumber
+                            ? `Table ${order.tableNumber}${order.loyaltyPhone ? ` · ${order.loyaltyPhone}` : ''}`
+                            : 'Walk-in / Waiter Order'}
                       </div>
                       <div>
                         <span className="font-semibold">Placed:</span> {formatDate(order.createdAt)}
@@ -178,7 +182,7 @@ export default function AdminOrders() {
                         <div className="flex-1">
                           <div className="font-semibold text-gray-800">Order Placed</div>
                           <div className="text-sm text-gray-600">
-                            By customer: {order.user.firstName} {order.user.lastName}
+                            {order.user ? `By customer: ${order.user.firstName} ${order.user.lastName}` : order.tableNumber ? `Table ${order.tableNumber}` : 'Waiter / Walk-in order'}
                           </div>
                         </div>
                       </div>

@@ -23,6 +23,10 @@ const waiterAPI = {
     headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
   }).then(r => r.json()),
 
+  getTables: () => fetch(`${API_URL}/api/tables`, {
+    headers: { 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}` }
+  }).then(r => r.json()),
+
   startSession: (data: any) => fetch(`${API_URL}/api/waiter/sessions`, {
     method: 'POST',
     headers: {
@@ -51,6 +55,11 @@ export default function WaiterDashboard() {
   const user = useAuthStore((state) => state.user);
   const addToast = useToastStore((state) => state.addToast);
   const [paymentSession, setPaymentSession] = useState<any>(null);
+  const [showTablesPanel, setShowTablesPanel] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<any>(null);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [sessionPartySize, setSessionPartySize] = useState('');
+  const [sessionNotes, setSessionNotes] = useState('');
 
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(5000);
@@ -62,12 +71,28 @@ export default function WaiterDashboard() {
     refetchInterval: autoRefresh ? refreshInterval : false,
   });
 
+  const { data: tablesData } = useQuery({
+    queryKey: ['waiter-tables'],
+    queryFn: waiterAPI.getTables,
+    enabled: !!user && user.role === 'STAFF',
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  });
+
   const startSessionMutation = useMutation({
     mutationFn: (data: { tableId: string; partySize: number; notes?: string }) => waiterAPI.startSession(data),
     onSuccess: (data) => {
+      if (!data?.success) {
+        addToast(data?.message || 'Failed to start session');
+        return;
+      }
       addToast('Walk-in session started!');
       queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
-
+      queryClient.invalidateQueries({ queryKey: ['waiter-tables'] });
+      setShowSessionModal(false);
+      setShowTablesPanel(false);
+      setSelectedTable(null);
+      setSessionPartySize('');
+      setSessionNotes('');
       if (data?.data?.session?.id) {
         navigate(`/waiter/take-order/${data.data.session.id}`);
       }
@@ -134,6 +159,8 @@ export default function WaiterDashboard() {
   }
 
   const dashboard = data?.data || {};
+  const allTables = tablesData?.data?.tables || [];
+  const availableTables = allTables.filter((t: any) => t.status === 'AVAILABLE');
   const sessions = dashboard.sessions || [];
   const shift = dashboard.shift;
   const pendingReservations = dashboard.pendingReservations || [];
@@ -235,102 +262,130 @@ export default function WaiterDashboard() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Active Sessions - Main Area */}
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold mb-4">🍽️ Active Tables ({sessions.length})</h2>
+          <div className="lg:col-span-2 space-y-4">
 
-            {sessions.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
-                <div className="text-6xl mb-4">🪑</div>
-                <h3 className="text-xl font-bold mb-2">No Active Tables</h3>
-                <p className="text-gray-600">Seat customers from pending reservations or start a walk-in session</p>
-
-                <button
-                  onClick={() => {
-                    navigate('/admin/tables-management');
-                  }}
-                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold w-full md:w-auto"
-                >
-                  🪑 View Tables & Start Walk-in
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                {sessions.map((session: any) => (
-                  <div
-                    key={session.id}
-                    className="bg-white rounded-lg shadow-md hover:shadow-lg transition cursor-pointer flex flex-col"
-                  //onClick={() => navigate(`/waiter/session/${session.id}`)}
-                  >
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="text-2xl font-bold">{session.table.tableNumber}</h3>
-                          <p className="text-sm text-gray-600">{session.table.location}</p>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-gray-600">Party of</div>
-                          <div className="text-2xl font-bold">{session.partySize}</div>
-                        </div>
-                      </div>
-
-                      {session.reservation && (
-                        <div className="text-sm mb-2">
-                          👤 {session.reservation.customerName}
-                        </div>
-                      )}
-
-                      <div className="text-sm text-gray-600 mb-3">
-                        ⏱️ Started {new Date(session.startedAt).toLocaleTimeString()}
-                      </div>
-
-                      {/* Orders */}
-                      {session.orders && session.orders.length > 0 && (
-                        <div className="border-t pt-3 mt-3">
-                          <div className="text-sm font-semibold mb-2">
-                            Orders ({session.orders.length})
-                          </div>
-                          <div className="space-y-1">
-                            {session.orders.map((order: any) => (
-                              <Link
-                                key={order.id}
-                                to={`/waiter/order/${order.id}`}
-                                className="block text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
-                              >
-                                {order.orderNumber} - {order.status} - €{Number(order.totalAmount).toFixed(2)}
-                              </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/waiter/take-order/${session.id}`);
-                          }}
-                          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded font-semibold text-sm hover:bg-blue-700"
-                        >
-                          📋 View / Order
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm('Complete this session?')) {
-                              setPaymentSession(session);
-                            }
-                          }}
-                          className="px-3 py-2 bg-green-600 text-white rounded font-semibold text-sm hover:bg-green-700"
-                        >
-                          ✓ Complete
-                        </button>
-                      </div>
+            {/* ── Seat New Table (always visible) ── */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <button
+                onClick={() => setShowTablesPanel(p => !p)}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🪑</span>
+                  <div className="text-left">
+                    <div className="font-bold text-gray-800">Seat New Table</div>
+                    <div className="text-sm text-gray-500">
+                      {availableTables.length} table{availableTables.length !== 1 ? 's' : ''} available
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+                <span className="text-gray-400 text-xl">{showTablesPanel ? '▲' : '▼'}</span>
+              </button>
+
+              {showTablesPanel && (
+                <div className="border-t px-5 py-4">
+                  {availableTables.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500">
+                      <div className="text-4xl mb-2">🔴</div>
+                      <p className="font-semibold">No tables available right now</p>
+                      <p className="text-sm mt-1">All tables are occupied or under maintenance</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {availableTables.map((table: any) => (
+                        <button
+                          key={table.id}
+                          onClick={() => { setSelectedTable(table); setShowSessionModal(true); }}
+                          className="border-2 border-green-200 hover:border-green-500 hover:bg-green-50 rounded-lg p-3 text-left transition group"
+                        >
+                          <div className="font-bold text-lg text-gray-800 group-hover:text-green-700">
+                            {table.tableNumber}
+                          </div>
+                          <div className="text-xs text-gray-500">{table.location || 'Indoor'}</div>
+                          <div className="text-xs text-gray-500 mt-1">👥 Cap. {table.capacity}</div>
+                          <div className="mt-2 text-xs font-semibold text-green-600">✅ Available</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ── Active Sessions ── */}
+            <div>
+              <h2 className="text-2xl font-bold mb-4">🍽️ Active Tables ({sessions.length})</h2>
+
+              {sessions.length === 0 ? (
+                <div className="bg-white rounded-lg shadow p-10 text-center">
+                  <div className="text-6xl mb-3">🍽️</div>
+                  <h3 className="text-xl font-bold mb-1">No Active Tables</h3>
+                  <p className="text-gray-500 text-sm">Use the panel above to seat customers</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {sessions.map((session: any) => (
+                    <div
+                      key={session.id}
+                      className="bg-white rounded-lg shadow-md hover:shadow-lg transition flex flex-col"
+                    >
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="text-2xl font-bold">{session.table.tableNumber}</h3>
+                            <p className="text-sm text-gray-600">{session.table.location}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm text-gray-600">Party of</div>
+                            <div className="text-2xl font-bold">{session.partySize}</div>
+                          </div>
+                        </div>
+
+                        {session.reservation && (
+                          <div className="text-sm mb-2">👤 {session.reservation.customerName}</div>
+                        )}
+
+                        <div className="text-sm text-gray-600 mb-3">
+                          ⏱️ Started {new Date(session.startedAt).toLocaleTimeString()}
+                        </div>
+
+                        {session.orders && session.orders.length > 0 && (
+                          <div className="border-t pt-3 mt-3">
+                            <div className="text-sm font-semibold mb-2">Orders ({session.orders.length})</div>
+                            <div className="space-y-1">
+                              {session.orders.map((order: any) => (
+                                <Link
+                                  key={order.id}
+                                  to={`/waiter/order/${order.id}`}
+                                  className="block text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+                                >
+                                  {order.orderNumber} — {order.status} — €{Number(order.totalAmount).toFixed(2)}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 mt-auto pt-4 border-t border-gray-100">
+                          <button
+                            onClick={() => navigate(`/waiter/take-order/${session.id}`)}
+                            className="flex-1 px-3 py-2 bg-blue-600 text-white rounded font-semibold text-sm hover:bg-blue-700"
+                          >
+                            📋 View / Order
+                          </button>
+                          <button
+                            onClick={() => { if (confirm('Complete this session?')) setPaymentSession(session); }}
+                            className="px-3 py-2 bg-green-600 text-white rounded font-semibold text-sm hover:bg-green-700"
+                          >
+                            ✓ Complete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Pending Reservations Sidebar */}
@@ -376,6 +431,77 @@ export default function WaiterDashboard() {
         </div>
       )}
       </div>
+      {/* Walk-in Session Modal */}
+      {showSessionModal && selectedTable && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-2xl font-bold">Start Walk-in Session</h3>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {selectedTable.tableNumber} · {selectedTable.location || 'Indoor'} · Cap. {selectedTable.capacity}
+                  </p>
+                </div>
+                <button onClick={() => { setShowSessionModal(false); setSelectedTable(null); }} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1">
+                    Party Size <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={sessionPartySize}
+                    onChange={e => setSessionPartySize(e.target.value)}
+                    min="1"
+                    max={selectedTable.capacity}
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+                    placeholder={`1 – ${selectedTable.capacity} guests`}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Notes (optional)</label>
+                  <textarea
+                    value={sessionNotes}
+                    onChange={e => setSessionNotes(e.target.value)}
+                    rows={2}
+                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none resize-none"
+                    placeholder="Allergies, preferences, special requests…"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    const ps = parseInt(sessionPartySize);
+                    if (!ps || ps < 1) { addToast('Please enter a valid party size'); return; }
+                    startSessionMutation.mutate({
+                      tableId: selectedTable.id,
+                      partySize: ps,
+                      notes: sessionNotes || undefined,
+                    });
+                  }}
+                  disabled={startSessionMutation.isPending || !sessionPartySize}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {startSessionMutation.isPending ? 'Starting…' : '🪑 Start Session'}
+                </button>
+                <button
+                  onClick={() => { setShowSessionModal(false); setSelectedTable(null); setSessionPartySize(''); setSessionNotes(''); }}
+                  className="px-4 py-3 border-2 border-gray-200 rounded-lg hover:bg-gray-50 text-gray-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment Modal */}
       {paymentSession && (
         <PaymentModal
@@ -390,4 +516,3 @@ export default function WaiterDashboard() {
     </div>
   );
 }
-

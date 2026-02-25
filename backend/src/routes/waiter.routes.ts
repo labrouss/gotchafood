@@ -11,47 +11,42 @@ import {
   clockIn,
   clockOut,
   getWaiterStats,
-  addItemsToOrder
-} from '../controllers/waiter.controller';
-
-import {
-  // ... existing imports
-  getAvailableTables,  // ADD THIS
-} from '../controllers/waiter.controller';
-import {
-  // ... existing imports
-  markOrderServed,  // ADD THIS
+  addItemsToOrder,
+  getAvailableTables,
+  markOrderServed,
 } from '../controllers/waiter.controller';
 
 const router = Router();
 
-// All routes require authentication
+// All routes require authentication + staff/admin role
 router.use(authenticate);
 router.use(authorize('ADMIN', 'STAFF'));
 
-// Waiter Dashboard
+// Dashboard & stats
 router.get('/dashboard', getWaiterDashboard);
-// Get available tables
-router.get('/available-tables', authenticate, getAvailableTables);
-// Mark order as served
-router.patch('/:sessionId/orders/:orderId/served', authenticate, markOrderServed);
+router.get('/stats', getWaiterStats);
+router.get('/stats/:waiterId', authorize('ADMIN'), getWaiterStats);
 
-// Table Sessions
-router.get('/sessions', getActiveSessions);
-router.post('/sessions', startTableSession);
-router.get('/sessions/:id', getTableSession);
-router.post('/sessions/:id/end', endTableSession);
-router.post('/sessions/:sessionId/orders', createSessionOrder);
-// Add items to existing order
-router.post('/:sessionId/orders/:orderId/items', authenticate, addItemsToOrder);
+// Available tables
+router.get('/available-tables', getAvailableTables);
 
 // Shifts
 router.get('/shifts', getMyShifts);
 router.post('/clock-in', clockIn);
 router.post('/clock-out', clockOut);
 
-// Stats
-router.get('/stats', getWaiterStats);
-router.get('/stats/:waiterId', authorize('ADMIN'), getWaiterStats);
+// Table sessions
+router.get('/sessions', getActiveSessions);
+router.post('/sessions', startTableSession);
+router.get('/sessions/:id', getTableSession);
+router.post('/sessions/:id/end', endTableSession);
+
+// Orders within a session
+router.post('/sessions/:sessionId/orders', createSessionOrder);
+router.post('/sessions/:sessionId/orders/:orderId/items', addItemsToOrder);
+
+// Mark order as served
+// Fixed: added /sessions/ prefix to match what the mobile client sends
+router.patch('/sessions/:sessionId/orders/:orderId/served', markOrderServed);
 
 export default router;

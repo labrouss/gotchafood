@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     TextInput, Alert, ActivityIndicator, ScrollView,
@@ -16,26 +16,11 @@ interface CartItem {
 }
 
 export default function TakeOrderScreen() {
-    const params = useLocalSearchParams<{
+    const { tableId, sessionId, tableNumber } = useLocalSearchParams<{
         tableId: string;
-        sessionId?: string; // Made optional for safety check
-        tableNumber?: string;
+        sessionId: string;
+        tableNumber: string;
     }>();
-
-    // If sessionId is missing from params, but tableId looks like a session UUID, 
-    // we need to be careful. However, the best fix is ensuring they are passed correctly:
-    const tableId = params.tableId;
-    const sessionId = params.sessionId; 
-    const tableNumber = params.tableNumber;
-
-    // ADD THIS LOG TO VERIFY FIX
-    console.log("📥 Screen Params:", { tableId, sessionId, tableNumber });
-
-    //const { tableId, sessionId, tableNumber } = useLocalSearchParams<{
-    //    tableId: string;
-    //    sessionId: string;
-    //    tableNumber: string;
-    //}>();
 
     const { items: menuItems, categories, fetchMenu, isLoading: menuLoading } = useMenuStore();
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -44,42 +29,31 @@ export default function TakeOrderScreen() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        fetchMenu(true);
+        fetchMenu();
     }, []);
 
-    // ✅ ROBUST FIX: Use useMemo and Array.isArray to prevent "filter is not a function"
-    const filteredItems = useMemo(() => {
-        const itemsArray = Array.isArray(menuItems) ? menuItems : [];
-        return itemsArray.filter(i => {
-            if (!i || !i.isAvailable) return false;
-            if (selectedCategory === 'all') return true;
-            return i.categoryId === selectedCategory;
-        });
-    }, [menuItems, selectedCategory]);
-
-     const addToCart = (item: any) => {
-    if (!item || !item.id) return;
-    
-    // Convert string price to number immediately
-    const cleanPrice = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
-
-    setCart(prev => {
-        const existing = prev.find(c => c.menuItemId === item.id);
-        if (existing) {
-            return prev.map(c => c.menuItemId === item.id
-                ? { ...c, quantity: c.quantity + 1 }
-                : c
-            );
-        }
-        return [...prev, { 
-            menuItemId: item.id, 
-            name: item.name, 
-            price: cleanPrice || 0, 
-            quantity: 1, 
-            notes: '' 
-        }];
+    // ✅ FIX: Handle undefined menuItems safely
+    const filteredItems = (menuItems || []).filter(i => {
+        if (!i || !i.isAvailable) return false;
+        if (selectedCategory === 'all') return true;
+        return i.categoryId === selectedCategory;
     });
-};
+
+    // ✅ FIX: Changed type from typeof menuItems[0] to any
+    const addToCart = (item: any) => {
+        if (!item) return;
+        
+        setCart(prev => {
+            const existing = prev.find(c => c.menuItemId === item.id);
+            if (existing) {
+                return prev.map(c => c.menuItemId === item.id
+                    ? { ...c, quantity: c.quantity + 1 }
+                    : c
+                );
+            }
+            return [...prev, { menuItemId: item.id, name: item.name, price: item.price, quantity: 1, notes: '' }];
+        });
+    };
 
     const removeFromCart = (menuItemId: string) => {
         setCart(prev => {
@@ -95,34 +69,17 @@ export default function TakeOrderScreen() {
         setCart(prev => prev.map(c => c.menuItemId === menuItemId ? { ...c, notes } : c));
     };
 
-    const cartTotal = cart.reduce((sum, c) => {
-    const price = typeof c.price === 'number' ? c.price : parseFloat(c.price || '0');
-    return sum + (price * c.quantity);
-}, 0);
-
+    const cartTotal = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
     const cartCount = cart.reduce((sum, c) => sum + c.quantity, 0);
 
     const submitOrder = async () => {
-        if (!sessionId) {
-	    console.log("🚀 Submitting Order:", {
-        sessionId: sessionId,
-        itemsCount: cart.length,
-        tableId: tableId
-    }); 
-            Alert.alert('Error', 'No active session found for this table.');
-            return;
-        }
-        if (cart.length === 0) { 
-            Alert.alert('Cart empty', 'Add items before placing an order'); 
-            return; 
-        }
-
+        if (cart.length === 0) { Alert.alert('Cart empty', 'Add items before placing an order'); return; }
         setSubmitting(true);
         try {
             await waiterAPI.createOrder(sessionId, cart.map(c => ({
                 menuItemId: c.menuItemId,
                 quantity: c.quantity,
-		price: c.price,
+                price: c.price,
                 notes: c.notes || undefined,
             })));
             setCart([]);
@@ -130,28 +87,46 @@ export default function TakeOrderScreen() {
                 { text: 'OK', onPress: () => router.back() }
             ]);
         } catch (err: any) {
-            Alert.alert('Order Failed', err?.response?.data?.message || 'Check connection to backend');
+            Alert.alert('Error', err?.response?.data?.message || 'Failed to place order');
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (menuLoading && (!menuItems || (Array.isArray(menuItems) && menuItems.length === 0))) {
+    // ✅ FIX: Add loading state
+    if (menuLoading && (!menuItems || menuItems.length === 0)) {
         return (
             <View style={styles.center}>
                 <ActivityIndicator size="large" color="#4F46E5" />
-                <Text style={styles.loadingText}>Loading menu...</Text>
+                <Text style={{ marginTop: 16, fontSize: 16, color: '#6B7280' }}>
+                    Loading menu...
+                </Text>
             </View>
         );
     }
 
-    if (!Array.isArray(menuItems) || menuItems.length === 0) {
+    // ✅ FIX: Add empty state with retry
+    if (!menuItems || menuItems.length === 0) {
         return (
             <View style={styles.center}>
-                <Text style={styles.emptyTitle}>No menu items available</Text>
-                <Text style={styles.emptySub}>The menu data structure might be incorrect or empty.</Text>
-                <TouchableOpacity onPress={() => fetchMenu()} style={styles.retryBtn}>
-                    <Text style={styles.retryText}>Retry Fetch</Text>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+                    No menu items available
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 16 }}>
+                    Unable to load the menu
+                </Text>
+                <TouchableOpacity 
+                    onPress={() => fetchMenu(true)}
+                    style={{ 
+                        paddingHorizontal: 24, 
+                        paddingVertical: 12, 
+                        backgroundColor: '#4F46E5', 
+                        borderRadius: 8 
+                    }}
+                >
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>
+                        Retry
+                    </Text>
                 </TouchableOpacity>
             </View>
         );
@@ -173,13 +148,13 @@ export default function TakeOrderScreen() {
                                     <Text style={styles.qtyBtnText}>−</Text>
                                 </TouchableOpacity>
                                 <Text style={styles.qtyText}>{item.quantity}</Text>
-                                <TouchableOpacity style={styles.qtyBtn} onPress={() => addToCart({ id: item.menuItemId, name: item.name, price: item.price })}>
+                                <TouchableOpacity style={styles.qtyBtn} onPress={() => addToCart({ id: item.menuItemId } as any)}>
                                     <Text style={styles.qtyBtnText}>+</Text>
                                 </TouchableOpacity>
                             </View>
                             <TextInput
                                 style={styles.notesInput}
-                                placeholder="Special instructions..."
+                                placeholder="Notes (e.g. no onions)"
                                 placeholderTextColor="#9CA3AF"
                                 value={item.notes}
                                 onChangeText={(t) => updateNotes(item.menuItemId, t)}
@@ -193,11 +168,7 @@ export default function TakeOrderScreen() {
                         <TouchableOpacity style={styles.backBtn} onPress={() => setShowCart(false)}>
                             <Text style={styles.backBtnText}>← Menu</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.submitBtn, submitting && { opacity: 0.6 }]} 
-                            onPress={submitOrder} 
-                            disabled={submitting}
-                        >
+                        <TouchableOpacity style={[styles.submitBtn, submitting && { opacity: 0.6 }]} onPress={submitOrder} disabled={submitting}>
                             {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Place Order 🚀</Text>}
                         </TouchableOpacity>
                     </View>
@@ -210,6 +181,7 @@ export default function TakeOrderScreen() {
         <View style={styles.container}>
             <Stack.Screen options={{ title: `Table ${tableNumber || tableId}`, headerShown: true }} />
 
+            {/* Category Filter */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catBar}>
                 <TouchableOpacity
                     style={[styles.catChip, selectedCategory === 'all' && styles.catChipActive]}
@@ -217,7 +189,7 @@ export default function TakeOrderScreen() {
                 >
                     <Text style={[styles.catChipText, selectedCategory === 'all' && styles.catChipTextActive]}>All</Text>
                 </TouchableOpacity>
-                {Array.isArray(categories) && categories.map(cat => (
+                {categories.map(cat => (
                     <TouchableOpacity
                         key={cat.id}
                         style={[styles.catChip, selectedCategory === cat.id && styles.catChipActive]}
@@ -230,12 +202,13 @@ export default function TakeOrderScreen() {
                 ))}
             </ScrollView>
 
+            {/* Menu Items */}
             <FlatList
                 data={filteredItems}
                 keyExtractor={i => i.id}
                 numColumns={2}
                 columnWrapperStyle={styles.menuRow}
-                contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
+                contentContainerStyle={{ padding: 8 }}
                 renderItem={({ item }) => {
                     const inCart = cart.find(c => c.menuItemId === item.id);
                     return (
@@ -243,7 +216,7 @@ export default function TakeOrderScreen() {
                             <Text style={styles.menuItemName}>{item.name}</Text>
                             <Text style={styles.menuItemDesc} numberOfLines={2}>{item.description}</Text>
                             <View style={styles.menuCardFooter}>
-			    <Text style={styles.menuItemPrice}>€{Number(item.price || 0).toFixed(2)}</Text>
+				<Text style={styles.menuItemPrice}>€{Number(item.price || 0).toFixed(2)}</Text>
                                 {inCart && (
                                     <View style={styles.inCartBadge}>
                                         <Text style={styles.inCartText}>{inCart.quantity}</Text>
@@ -255,9 +228,10 @@ export default function TakeOrderScreen() {
                 }}
             />
 
+            {/* Cart FAB */}
             {cartCount > 0 && (
                 <TouchableOpacity style={styles.cartFab} onPress={() => setShowCart(true)}>
-                    <Text style={styles.cartFabText}>🛒 Cart ({cartCount}) — €{cartTotal.toFixed(2)}</Text>
+                    <Text style={styles.cartFabText}>🛒 View Cart ({cartCount}) — €{cartTotal.toFixed(2)}</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -267,16 +241,10 @@ export default function TakeOrderScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-    loadingText: { marginTop: 16, fontSize: 16, color: '#6B7280' },
-    emptyTitle: { fontSize: 18, fontWeight: '600', color: '#374151', marginBottom: 8 },
-    emptySub: { fontSize: 14, color: '#6B7280', marginBottom: 16, textAlign: 'center' },
-    retryBtn: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#4F46E5', borderRadius: 8 },
-    retryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-    catBar: { maxHeight: 60, paddingHorizontal: 8, paddingVertical: 10 },
+    catBar: { maxHeight: 50, paddingHorizontal: 8, paddingVertical: 8 },
     catChip: {
         paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
         backgroundColor: '#fff', marginRight: 8, borderWidth: 1, borderColor: '#E5E7EB',
-        height: 34
     },
     catChipActive: { backgroundColor: '#4F46E5', borderColor: '#4F46E5' },
     catChipText: { fontSize: 13, fontWeight: '600', color: '#374151' },

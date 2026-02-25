@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     RefreshControl, Alert, ActivityIndicator, ScrollView, Modal,
+    TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -23,6 +24,13 @@ export default function DashboardScreen() {
     // --- MODAL STATE ---
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
     const [selectedSession, setSelectedSession] = useState<any>(null);
+    
+    // Customer identification modal
+    const [customerModalVisible, setCustomerModalVisible] = useState(false);
+    const [selectedTable, setSelectedTable] = useState<{ id: string; number: string } | null>(null);
+    const [customerPhone, setCustomerPhone] = useState('');
+    const [customerSearching, setCustomerSearching] = useState(false);
+    const [customerFound, setCustomerFound] = useState<any>(null);
 
     const { data, isLoading, refetch, isRefetching } = useQuery({
         queryKey: ['waiterDashboard'],
@@ -51,7 +59,6 @@ export default function DashboardScreen() {
     const finalizePayment = async (method: string) => {
         if (!selectedSession) return;
         try {
-            // Passing the selected payment method to the backend
             await waiterAPI.endSession(selectedSession.id, { paymentMethod: method });
             setPaymentModalVisible(false);
             setSelectedSession(null);
@@ -63,20 +70,81 @@ export default function DashboardScreen() {
     };
 
     const startSession = async (tableId: string, tableNumber: string) => {
-        Alert.alert(`Start Table ${tableNumber}`, 'How many guests?', [
-            { text: '1-2', onPress: () => performStart(tableId, 2) },
-            { text: '3-4', onPress: () => performStart(tableId, 4) },
-            { text: 'Cancel', style: 'cancel' }
-        ]);
+        // Open customer modal first
+        setSelectedTable({ id: tableId, number: tableNumber });
+        setCustomerModalVisible(true);
+        setCustomerPhone('');
+        setCustomerFound(null);
     };
 
-    const performStart = async (tableId: string, partySize: number) => {
+    const lookupCustomer = async () => {
+        if (!customerPhone || customerPhone.length < 10) {
+            Alert.alert('Invalid Phone', 'Please enter a valid phone number');
+            return;
+        }
+        
+        setCustomerSearching(true);
         try {
-            await waiterAPI.startSession({ tableId, partySize });
+            // Call your loyalty API endpoint
+            const response = await waiterAPI.lookupLoyaltyCustomer(customerPhone);
+            
+            if (response.data?.customer) {
+                setCustomerFound(response.data.customer);
+                Alert.alert(
+                    'Customer Found! ✅',
+                    `${response.data.customer.name}\nPoints: ${response.data.customer.points}\nDiscount: ${response.data.customer.discount || 0}%`
+                );
+            } else {
+                Alert.alert('Not Found', 'No loyalty account found for this number');
+                setCustomerFound(null);
+            }
+        } catch (e: any) {
+            console.error('Lookup error:', e);
+            Alert.alert('Not Found', 'No loyalty account found');
+            setCustomerFound(null);
+        } finally {
+            setCustomerSearching(false);
+        }
+    };
+
+    const confirmStartSession = async (partySize: number) => {
+        if (!selectedTable) return;
+        
+        try {
+            const sessionData: any = {
+                tableId: selectedTable.id,
+                partySize,
+            };
+            
+            if (customerFound) {
+                sessionData.customerId = customerFound.id;
+                sessionData.loyaltyDiscount = customerFound.discount || 0;
+            }
+            
+            await waiterAPI.startSession(sessionData);
             queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
+            
+            setCustomerModalVisible(false);
+            setSelectedTable(null);
+            setCustomerPhone('');
+            setCustomerFound(null);
+            
+            Alert.alert('Success', `Table ${selectedTable.number} started!${customerFound ? ' with loyalty applied' : ''}`);
         } catch (e: any) {
             Alert.alert('Error', 'Failed to start session');
         }
+    };
+
+    const skipCustomerLookup = () => {
+        Alert.alert(
+            `Start Table ${selectedTable?.number}`,
+            'How many guests?',
+            [
+                { text: '1-2', onPress: () => confirmStartSession(2) },
+                { text: '3-4', onPress: () => confirmStartSession(4) },
+                { text: 'Cancel', style: 'cancel' }
+            ]
+        );
     };
 
     const handleLogout = () => {
@@ -117,6 +185,9 @@ export default function DashboardScreen() {
                                 return acc + (parseFloat(order.totalAmount) || 0);
                             }, 0) || 0;
 
+                            const totalItems = session.orders?.reduce((sum: number, o: any) => 
+                                sum + (o.items?.length || 0), 0) || 0;
+
                             return (
                                 <View key={session.id} style={styles.tableCard}>
                                     <View style={styles.tableHeader}>
@@ -130,24 +201,64 @@ export default function DashboardScreen() {
                                         </View>
                                     </View>
 
+                                    {/* Clickable Orders */}
                                     {session.orders?.map((order: any) => (
-                                        <View key={order.id} style={styles.orderRow}>
+                                        <TouchableOpacity 
+                                            key={order.id} 
+                                            style={styles.orderRow}
+                                            onPress={() => {
+                                                console.log('📋 Viewing order:', order.id);
+                                                router.push(`/order-detail/${order.id}`);
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
                                             <View style={{ flex: 1 }}>
-                                                <Text style={styles.orderLabel}>Order {order.orderNumber}</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                                    <Text style={styles.orderLabel}>Order {order.orderNumber}</Text>
+                                                    <Text style={styles.tapHint}> (Tap to view)</Text>
+                                                </View>
+                                                
+                                                <Text style={styles.orderItems}>
+                                                    {order.items?.length || 0} item{order.items?.length !== 1 ? 's' : ''} • €{parseFloat(order.totalAmount || 0).toFixed(2)}
+                                                </Text>
+                                                
                                                 {order.status === 'READY' && (
                                                     <TouchableOpacity
                                                         style={styles.serveBtn}
-                                                        onPress={() => handleMarkServed(session.id, order.id)}
+                                                        onPress={(e) => {
+                                                            e.stopPropagation();
+                                                            handleMarkServed(session.id, order.id);
+                                                        }}
                                                     >
                                                         <Text style={styles.serveBtnText}>✋ Mark Served</Text>
                                                     </TouchableOpacity>
                                                 )}
                                             </View>
-                                            <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[order.status] || '#6B7280' }]}>
-                                                <Text style={styles.statusText}>{order.status}</Text>
+                                            
+                                            <View style={{ alignItems: 'flex-end' }}>
+                                                <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[order.status] || '#6B7280' }]}>
+                                                    <Text style={styles.statusText}>{order.status}</Text>
+                                                </View>
+                                                <Text style={{ fontSize: 16, marginTop: 4 }}>👆</Text>
                                             </View>
-                                        </View>
+                                        </TouchableOpacity>
                                     ))}
+
+                                    {/* View All Items Summary */}
+                                    {session.orders && session.orders.length > 0 && (
+                                        <TouchableOpacity
+                                            style={styles.viewAllBtn}
+                                            onPress={() => {
+                                                if (session.orders[0]) {
+                                                    router.push(`/order-detail/${session.orders[0].id}`);
+                                                }
+                                            }}
+                                        >
+                                            <Text style={styles.viewAllText}>
+                                                📋 View All Items ({totalItems} total)
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
 
                                     <View style={styles.buttonGroup}>
                                         <TouchableOpacity
@@ -215,6 +326,23 @@ export default function DashboardScreen() {
                             </Text>
                         </View>
 
+                        {/* Review Orders Button */}
+                        {selectedSession?.orders && selectedSession.orders.length > 0 && (
+                            <TouchableOpacity 
+                                style={styles.reviewOrdersBtn}
+                                onPress={() => {
+                                    setPaymentModalVisible(false);
+                                    if (selectedSession.orders[0]) {
+                                        router.push(`/order-detail/${selectedSession.orders[0].id}`);
+                                    }
+                                }}
+                            >
+                                <Text style={styles.reviewOrdersText}>
+                                    📋 Review Orders Before Payment
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+
                         <Text style={styles.methodLabel}>Payment Method</Text>
                         <View style={styles.methodContainer}>
                             <TouchableOpacity style={styles.methodBtn} onPress={() => finalizePayment('CASH')}>
@@ -245,6 +373,126 @@ export default function DashboardScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* --- CUSTOMER IDENTIFICATION MODAL --- */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={customerModalVisible}
+                onRequestClose={() => setCustomerModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>🎫 Customer Check-in</Text>
+                            <TouchableOpacity onPress={() => setCustomerModalVisible(false)}>
+                                <Text style={styles.closeX}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.modalSubtitle}>
+                            Table {selectedTable?.number} • Scan card or enter phone
+                        </Text>
+
+                        {/* Customer Info Display */}
+                        {customerFound && (
+                            <View style={styles.customerFoundBox}>
+                                <Text style={styles.customerFoundTitle}>✅ Customer Found!</Text>
+                                <Text style={styles.customerName}>{customerFound.name}</Text>
+                                <View style={styles.customerStatsRow}>
+                                    <View style={styles.customerStat}>
+                                        <Text style={styles.statLabel}>Points</Text>
+                                        <Text style={styles.statValue}>{customerFound.points || 0}</Text>
+                                    </View>
+                                    <View style={styles.customerStat}>
+                                        <Text style={styles.statLabel}>Discount</Text>
+                                        <Text style={styles.statValue}>{customerFound.discount || 0}%</Text>
+                                    </View>
+                                    <View style={styles.customerStat}>
+                                        <Text style={styles.statLabel}>Visits</Text>
+                                        <Text style={styles.statValue}>{customerFound.visits || 0}</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Phone Input */}
+                        <View style={styles.inputSection}>
+                            <Text style={styles.inputLabel}>📱 Phone Number</Text>
+                            <View style={styles.inputRow}>
+                                <TextInput
+                                    style={styles.phoneInput}
+                                    placeholder="Enter phone number"
+                                    placeholderTextColor="#9CA3AF"
+                                    keyboardType="phone-pad"
+                                    value={customerPhone}
+                                    onChangeText={setCustomerPhone}
+                                    maxLength={15}
+                                />
+                                <TouchableOpacity 
+                                    style={[styles.lookupBtn, customerSearching && { opacity: 0.6 }]}
+                                    onPress={lookupCustomer}
+                                    disabled={customerSearching}
+                                >
+                                    {customerSearching ? (
+                                        <ActivityIndicator color="#fff" size="small" />
+                                    ) : (
+                                        <Text style={styles.lookupBtnText}>Search</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Scan Card Option */}
+                        <TouchableOpacity 
+                            style={styles.scanBtn}
+                            onPress={() => {
+                                Alert.alert('Scanner', 'Barcode scanner feature coming soon!');
+                            }}
+                        >
+                            <Text style={styles.scanBtnText}>📷 Scan Loyalty Card</Text>
+                        </TouchableOpacity>
+
+                        {/* Party Size Selection */}
+                        <View style={styles.partySizeSection}>
+                            <Text style={styles.inputLabel}>👥 Party Size</Text>
+                            <View style={styles.partySizeRow}>
+                                <TouchableOpacity 
+                                    style={styles.partySizeBtn}
+                                    onPress={() => confirmStartSession(1)}
+                                >
+                                    <Text style={styles.partySizeBtnText}>1</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={styles.partySizeBtn}
+                                    onPress={() => confirmStartSession(2)}
+                                >
+                                    <Text style={styles.partySizeBtnText}>2</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={styles.partySizeBtn}
+                                    onPress={() => confirmStartSession(3)}
+                                >
+                                    <Text style={styles.partySizeBtnText}>3</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={styles.partySizeBtn}
+                                    onPress={() => confirmStartSession(4)}
+                                >
+                                    <Text style={styles.partySizeBtnText}>4+</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Skip Option */}
+                        <TouchableOpacity 
+                            style={styles.skipBtn}
+                            onPress={skipCustomerLookup}
+                        >
+                            <Text style={styles.skipBtnText}>Skip • Continue without loyalty</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -265,12 +513,28 @@ const styles = StyleSheet.create({
     tableHeader: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 10, marginBottom: 10 },
     tableNumber: { fontSize: 18, fontWeight: 'bold' },
     partySize: { color: '#6B7280' },
-    orderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+    orderRow: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start', 
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        marginHorizontal: -12,
+        marginBottom: 8,
+        backgroundColor: '#FAFAFA',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
+    },
     orderLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
+    orderItems: { fontSize: 13, color: '#6B7280', marginTop: 2, marginBottom: 6 },
+    tapHint: { fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' },
     statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     statusText: { fontSize: 10, fontWeight: '800', color: '#fff' },
     serveBtn: { backgroundColor: '#10B981', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 5, marginTop: 5, alignSelf: 'flex-start' },
     serveBtnText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+    viewAllBtn: { padding: 10, backgroundColor: '#F3F4F6', borderRadius: 8, marginTop: 8, marginBottom: 8, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
+    viewAllText: { fontSize: 13, fontWeight: '600', color: '#4F46E5' },
     buttonGroup: { flexDirection: 'row', gap: 10, marginTop: 15 },
     actionBtn: { flex: 1.5, backgroundColor: '#4F46E5', padding: 12, borderRadius: 8, alignItems: 'center' },
     completeBtn: { flex: 1, backgroundColor: '#111827', padding: 12, borderRadius: 8, alignItems: 'center' },
@@ -283,16 +547,18 @@ const styles = StyleSheet.create({
     totalBadgeLabel: { fontSize: 10, color: '#6B7280', textTransform: 'uppercase', fontWeight: 'bold' },
     totalBadgeValue: { fontSize: 16, fontWeight: '800', color: '#111827' },
     
-    // --- MODAL STYLES ---
+    // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: 480 },
+    modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
-    modalSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 24 },
+    modalSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 20 },
     closeX: { fontSize: 22, color: '#9CA3AF', padding: 4 },
-    paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 20, borderRadius: 16, marginBottom: 24, borderWidth: 1, borderColor: '#F3F4F6' },
+    paymentSummary: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 20, borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6' },
     totalLabel: { fontSize: 12, fontWeight: '800', color: '#6B7280' },
     totalValue: { fontSize: 32, fontWeight: '900', color: '#10B981' },
+    reviewOrdersBtn: { backgroundColor: '#EFF6FF', padding: 12, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: '#BFDBFE', alignItems: 'center' },
+    reviewOrdersText: { fontSize: 14, fontWeight: '600', color: '#1E40AF' },
     methodLabel: { fontSize: 15, fontWeight: 'bold', color: '#374151', marginBottom: 12 },
     methodContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 24 },
     methodBtn: { flex: 1, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#E5E7EB', padding: 16, borderRadius: 16, alignItems: 'center' },
@@ -301,4 +567,27 @@ const styles = StyleSheet.create({
     infoText: { fontSize: 14, color: '#1E40AF', fontWeight: '500', marginBottom: 4 },
     cancelModalBtn: { padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16 },
     cancelModalText: { color: '#6B7280', fontWeight: 'bold', fontSize: 15 },
+    
+    // Customer Modal Styles
+    customerFoundBox: { backgroundColor: '#D1FAE5', borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 2, borderColor: '#10B981' },
+    customerFoundTitle: { fontSize: 14, fontWeight: '700', color: '#065F46', marginBottom: 8 },
+    customerName: { fontSize: 22, fontWeight: '800', color: '#065F46', marginBottom: 12 },
+    customerStatsRow: { flexDirection: 'row', justifyContent: 'space-around' },
+    customerStat: { alignItems: 'center' },
+    statLabel: { fontSize: 11, color: '#059669', fontWeight: '600', textTransform: 'uppercase' },
+    statValue: { fontSize: 18, fontWeight: '800', color: '#065F46', marginTop: 2 },
+    inputSection: { marginBottom: 16 },
+    inputLabel: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8 },
+    inputRow: { flexDirection: 'row', gap: 8 },
+    phoneInput: { flex: 1, backgroundColor: '#F9FAFB', borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 12, padding: 14, fontSize: 16, color: '#111827' },
+    lookupBtn: { backgroundColor: '#4F46E5', borderRadius: 12, paddingHorizontal: 20, justifyContent: 'center', minWidth: 80 },
+    lookupBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    scanBtn: { backgroundColor: '#EFF6FF', borderWidth: 1.5, borderColor: '#3B82F6', borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 20 },
+    scanBtnText: { color: '#1E40AF', fontWeight: '700', fontSize: 15 },
+    partySizeSection: { marginBottom: 16 },
+    partySizeRow: { flexDirection: 'row', gap: 10 },
+    partySizeBtn: { flex: 1, backgroundColor: '#4F46E5', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+    partySizeBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    skipBtn: { padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12 },
+    skipBtnText: { color: '#6B7280', fontWeight: '600', fontSize: 14 },
 });

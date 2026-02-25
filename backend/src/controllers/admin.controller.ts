@@ -5,6 +5,7 @@ import { AppError } from '../middleware/error.middleware';
 import bcrypt from 'bcrypt';
 import { sendTierUpgradeEmail, sendDeliveryEmail } from '../utils/email.util';
 import { sendDeliverySMS, sendTierUpgradeSMS } from '../utils/sms.util';
+import { io } from '../server';
 
 const prisma = new PrismaClient();
 

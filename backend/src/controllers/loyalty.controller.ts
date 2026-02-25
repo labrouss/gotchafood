@@ -54,3 +54,47 @@ export const getLoyaltyToken = async (req: Request, res: Response, next: NextFun
     next(error);
   }
 };
+
+export const lookupCustomer = async (req: Request, res: Response) => {
+    const { phone } = req.params;
+    
+    try {
+        const customer = await prisma.customer.findUnique({
+            where: { phone },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                loyaltyPoints: true,
+                discountTier: true,
+                totalVisits: true,
+            }
+        });
+        
+        if (!customer) {
+            return res.json({
+                success: true,
+                customer: null,
+                message: 'Customer not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            customer: {
+                id: customer.id,
+                name: `${customer.firstName} ${customer.lastName}`,
+                phone: customer.phone,
+                points: customer.loyaltyPoints || 0,
+                discount: customer.discountTier || 0,
+                visits: customer.totalVisits || 0,
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to lookup customer'
+        });
+    }
+};

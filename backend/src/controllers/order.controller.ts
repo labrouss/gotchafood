@@ -216,11 +216,16 @@ export const getOrderById = async (
 
     const { id } = req.params;
 
+    const isStaff = req.user.role === 'ADMIN' || req.user.role === 'STAFF';
+
+    // Staff (waiters, admins) can look up any order by ID.
+    // Customers can only see their own orders.
+    const whereClause = isStaff
+      ? { id }
+      : { id, userId: req.user.id };
+
     const order = await prisma.order.findFirst({
-      where: {
-        id,
-        userId: req.user.id,
-      },
+      where: whereClause,
       include: {
         items: {
           include: {
@@ -229,6 +234,15 @@ export const getOrderById = async (
         },
         address: true,
         payment: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
       },
     });
 

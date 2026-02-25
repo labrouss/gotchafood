@@ -1,68 +1,111 @@
 #!/bin/sh
-
-# Ensure the script stops on serious errors, but allows us to debug
-set -e
+# No set -e — tunnel failure must fall back gracefully, not kill the container.
 
 echo "==========================================="
-echo "🔍 PRE-FLIGHT DEBUG INFORMATION"
+echo "🔍 PRE-FLIGHT"
 echo "==========================================="
-echo "📂 Current Directory: $(pwd)"
-echo "👤 Current User: $(whoami)"
-echo "🌐 Environment API_URL: $API_URL"
+echo "📂 Working dir : $(pwd)"
+echo "👤 User        : $(whoami)"
+echo "🌐 API_URL     : ${API_URL:-NOT SET ⚠️}"
+echo "📡 NGROK       : ${NGROK_AUTHTOKEN:+configured}"
+echo "🔑 EXPO_TOKEN  : ${EXPO_TOKEN:+configured}"
 
-echo "--- 📦 Checking node_modules ---"
-if [ -d "node_modules" ]; then
-    echo "✅ node_modules exists. Found $(ls -1 node_modules | wc -l) packages."
-    # List a few critical ones to verify architecture
-    ls -d node_modules/react-native-reanimated node_modules/react-native-worklets 2>/dev/null || echo "⚠️ Warning: Critical reanimated packages missing!"
+# ── 1. Write API_URL into .env so Metro bakes it into the bundle ──────────────
+# react-native-dotenv reads .env at Metro startup. Writing it here guarantees
+# the container env var reaches the JS bundle via the @env import in api.ts.
+if [ -n "$API_URL" ]; then
+  printf "API_URL=%s\nEXPO_PUBLIC_API_URL=%s\n" "$API_URL" "$API_URL" > .env
+  echo "✅ .env written: API_URL=$API_URL"
 else
-    echo "❌ node_modules NOT found."
+  echo "⚠️  API_URL not set. App will log an error but still start."
 fi
 
-echo "--- 📱 Checking Expo State ---"
-if [ -d ".expo" ]; then
-    echo "🗑️ Found existing .expo directory. Clearing cache..."
-    rm -rf .expo
+# ── 2. Clear stale Expo cache ─────────────────────────────────────────────────
+echo ""
+echo "--- 🗑️  Clearing Expo cache ---"
+rm -rf .expo
+echo "✅ .expo cache cleared"
+
+# ── 3. Install dependencies ───────────────────────────────────────────────────
+echo ""
+echo "==========================================="
+echo "📦 Installing dependencies (Expo SDK 54)"
+echo "==========================================="
+if npm install --legacy-peer-deps; then
+  echo "✅ npm install complete"
 else
-    echo "✨ No existing .expo directory found."
+  echo ""
+  echo "❌ npm install FAILED — check 'npm ERR!' lines above"
+  echo "   Container kept alive: docker exec -it food-ordering-mobile sh"
+  tail -f /dev/null
 fi
 
-echo "--- 🗺️ App Directory Structure ---"
-ls -R app | grep -v "node_modules" || echo "⚠️ Warning: 'app' directory is empty or missing!"
-
-echo "==========================================="
-echo "🚀 STARTING INSTALLATION & EXPO"
-echo "==========================================="
-
-# Use a subshell for the main process so we can catch failure and stay alive
-echo "Installing dependencies"
-npm install --legacy-peer-deps 
-
-echo "🌉 Ensuring tunnel dependencies are present..." 
-npm install @expo/ngrok@4.1.0 --no-save --legacy-peer-deps 
-    
-echo "🔑 Configuring Ngrok..."
-npx ngrok authtoken "$NGROK_AUTHTOKEN" || echo "⚠️ Ngrok token config failed, attempting to continue..."
-    
-# Start Expo
-echo "✨ Starting Expo Bundler..." 
-if npx expo start --tunnel --clear --non-interactive; then
-    echo "✅ Expo started successfully with Tunnel."
-else
-    echo "⚠️ Tunnel failed to start. Falling back to LAN mode..."
-    echo "💡 Note: You may need to use your local IP to connect."
-
-    # Fallback command: LAN mode
-    # We remove --tunnel and --clear (to avoid double-rebuilding cache)
-    npx expo start --non-interactive
+# Canary: verify expo-router actually installed — if this is missing the app
+# shows "Welcome to Expo" with no useful error message
+if [ ! -f "node_modules/expo-router/package.json" ]; then
+  echo ""
+  echo "❌ expo-router did not install. Check npm output above for errors."
+  echo "   Container kept alive: docker exec -it food-ordering-mobile sh"
+  tail -f /dev/null
 fi
 
+INSTALLED_ROUTER=$(node -e "console.log(require('./node_modules/expo-router/package.json').version)")
+INSTALLED_EXPO=$(node -e "console.log(require('./node_modules/expo/package.json').version)")
+echo "✅ expo@${INSTALLED_EXPO} + expo-router@${INSTALLED_ROUTER} ready"
 
-if [ $? -ne 0 ]; then
-    echo "==========================================="
-    echo "❌ CRITICAL FAILURE DETECTED"
-    echo "==========================================="
-    echo "The main process exited. Keeping container alive for troubleshooting..."
-    echo "You can now run: docker exec -it food-ordering-mobile bash"
-    tail -f /dev/null
+# ── 4. Install tunnel helper (non-fatal) ─────────────────────────────────────
+echo ""
+echo "🌉 Installing @expo/ngrok..."
+npm install @expo/ngrok@4.1.0 --no-save --legacy-peer-deps 2>/dev/null \
+  || echo "⚠️  @expo/ngrok install failed — tunnel unavailable"
+
+# ── 5. Configure ngrok (non-fatal) ───────────────────────────────────────────
+if [ -n "$NGROK_AUTHTOKEN" ]; then
+  echo ""
+  echo "🔑 Configuring ngrok..."
+  npx ngrok authtoken "$NGROK_AUTHTOKEN" 2>/dev/null \
+    || echo "⚠️  ngrok authtoken config failed — will use LAN fallback"
+fi
+
+# ── 6. Expo login (non-fatal, improves tunnel reliability) ───────────────────
+if [ -n "$EXPO_TOKEN" ]; then
+  echo ""
+  echo "🔐 Logging in to Expo..."
+  EXPO_TOKEN="$EXPO_TOKEN" npx expo whoami 2>/dev/null \
+    && echo "✅ Expo login OK" \
+    || echo "⚠️  Expo login failed (non-fatal)"
+fi
+
+# ── 7. Start Expo ─────────────────────────────────────────────────────────────
+echo ""
+echo "==========================================="
+echo "🚀 Starting Expo SDK 54"
+echo "==========================================="
+
+START_OK=1
+
+if [ -n "$NGROK_AUTHTOKEN" ]; then
+  echo "🌐 Trying tunnel mode..."
+  npx expo start --tunnel --clear --non-interactive
+  START_OK=$?
+fi
+
+if [ "$START_OK" -ne 0 ]; then
+  echo ""
+  echo "⚠️  Tunnel failed or skipped — falling back to LAN mode"
+  echo "   Device must be on the same network as: ${REACT_NATIVE_PACKAGER_HOSTNAME:-this host}"
+  echo ""
+  npx expo start --non-interactive --clear
+  START_OK=$?
+fi
+
+# ── 8. Fatal fallback ────────────────────────────────────────────────────────
+if [ "$START_OK" -ne 0 ]; then
+  echo ""
+  echo "==========================================="
+  echo "❌ EXPO FAILED TO START"
+  echo "==========================================="
+  echo "Try: docker exec -it food-ordering-mobile sh"
+  echo "Then: npx expo doctor"
+  tail -f /dev/null
 fi

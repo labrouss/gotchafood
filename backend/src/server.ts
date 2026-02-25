@@ -28,6 +28,7 @@ import counterRoutes from './routes/counter.routes';
 import tablesRoutes from './routes/tables.routes';
 import reservationsRoutes from './routes/reservations.routes';
 import waiterRoutes from './routes/waiter.routes';
+import loyaltyRoutes from './routes/loyalty.routes';
 
 
 // Import middleware
@@ -142,6 +143,10 @@ app.use('/stock-images', cors(corsOptions), express.static(path.join(process.cwd
 // Error handling
 app.use(notFound);
 app.use(errorHandler);
+
+// loyalty routes
+app.use('/api/loyalty', loyaltyRoutes);
+
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

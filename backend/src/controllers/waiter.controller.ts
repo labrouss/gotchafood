@@ -30,6 +30,15 @@ export const getWaiterDashboard = async (req: Request, res: Response, next: Next
             status: true,
             totalAmount: true,
             createdAt: true,
+            items: {
+              select: {
+                id: true,
+                quantity: true,
+                price: true,
+                notes: true,
+                menuItem: { select: { name: true } },
+              },
+            },
           },
         },
       },
@@ -115,7 +124,7 @@ export const getAvailableTables = async (req: Request, res: Response, next: Next
 // ── Start table session ───────────────────────────────────────────────────
 export const startTableSession = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { tableId, reservationId, partySize, notes } = req.body;
+    const { tableId, partySize, customerId, loyaltyDiscount, notes, reservationId } = req.body;
     const waiterId = (req as any).user.id;
 
     // Check if table already has active session
@@ -137,11 +146,16 @@ export const startTableSession = async (req: Request, res: Response, next: NextF
         reservationId,
         waiterId,
         partySize,
+	customerId,
+	loyaltyDiscount,
         notes,
+	status: 'ACTIVE',
+	startedAt: new Date(),
       },
       include: {
         table: true,
         reservation: true,
+	customer: true,
       },
     });
 
@@ -310,7 +324,33 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
       return res.status(400).json({ success: false, message: 'Session not active' });
     }
 
-    // Calculate totals
+    // Validate items and resolve prices from the database.
+    // Never trust client-supplied prices — always use the canonical menu price.
+    if (!items || items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Order must contain at least one item' });
+    }
+
+    const menuItemIds: string[] = items.map((i: any) => i.menuItemId);
+    const menuItems = await prisma.menuItem.findMany({
+      where: { id: { in: menuItemIds } },
+      select: { id: true, price: true, isAvailable: true, name: true },
+    });
+
+    // Build a lookup map and validate every item exists and is available
+    const priceMap = new Map(menuItems.map((m) => [m.id, m]));
+    for (const item of items) {
+      const menu = priceMap.get(item.menuItemId);
+      if (!menu) {
+        return res.status(400).json({ success: false, message: `Menu item not found: ${item.menuItemId}` });
+      }
+      if (!menu.isAvailable) {
+        return res.status(400).json({ success: false, message: `Item is no longer available: ${menu.name}` });
+      }
+      // Stamp the canonical price onto the item so downstream code uses it
+      item.price = Number(menu.price);
+    }
+
+    // Calculate totals using DB prices
     const subtotal = items.reduce((sum: number, item: any) => {
       return sum + (item.price * item.quantity);
     }, 0);
@@ -318,7 +358,7 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
     // Calculate loyalty discount
     let discountAmount = 0;
     let appliedTier = null;
-    let customerIdForOrder = waiterId;
+    let customerIdForOrder: string | null = null; // null for waiter orders without a loyalty customer
 
     if (loyaltyPhone) {
       const customer = await prisma.user.findFirst({
@@ -340,18 +380,25 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
       }
     }
 
-    // Generate order number
-    const orderCount = await prisma.order.count({
-      where: {
-        orderNumber: { startsWith: 'WTR-' },
-      },
-    });
-    const orderNumber = `WTR-${String(orderCount + 1).padStart(6, '0')}`;
+    // Generate a collision-safe order number: timestamp (last 6 digits) + 3-digit random suffix.
+    // Retries up to 5 times in the rare case of a collision on a busy system.
+    const generateOrderNumber = () => {
+      const ts = Date.now().toString().slice(-6);
+      const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      return `WTR-${ts}${rand}`;
+    };
+
+    let orderNumber = generateOrderNumber();
+    let attempts = 0;
+    while (await prisma.order.findUnique({ where: { orderNumber } })) {
+      if (++attempts > 5) throw new Error('Failed to generate a unique order number after 5 attempts');
+      orderNumber = generateOrderNumber();
+    }
 
     // Create order
     const order = await prisma.order.create({
       data: {
-        userId: customerIdForOrder, // Use customer ID if found by phone
+        userId: customerIdForOrder, // null for waiter orders without a loyalty customer
         orderNumber,
         orderType: 'WAITER',
         orderSource: 'waiter',
@@ -386,6 +433,19 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
             },
           },
         },
+        // Only include user relation when a customer is linked
+        ...(customerIdForOrder
+          ? {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            }
+          : {}),
       },
     });
 
@@ -405,7 +465,9 @@ export const createSessionOrder = async (req: Request, res: Response, next: Next
 // Mark order as served (removes from kitchen display)
 export const markOrderServed = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { orderId } = req.params;
+    // Route may supply the order id as :orderId (waiter sessions route)
+    // or as :id (orders route called from mobile order-detail screen)
+    const orderId = req.params.orderId || req.params.id;
     const waiterId = (req as any).user.id;
 
     const order = await prisma.order.findUnique({
