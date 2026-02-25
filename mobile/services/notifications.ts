@@ -1,28 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 
-// expo-task-manager is only available on native. Guard it so the
-// module-level defineTask() call never crashes Metro startup on
-// web / simulator / environments where the native module isn't linked.
-let TaskManager: typeof import('expo-task-manager') | null = null;
-try {
-  TaskManager = require('expo-task-manager');
-} catch {
-  console.warn('⚠️ expo-task-manager not available in this environment');
-}
-
-const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
-
-if (TaskManager) {
-  TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, ({ data, error }: any) => {
-    if (error) {
-      console.error('Background notification error:', error);
-      return;
-    }
-    console.log('Received a notification in the background!', data);
-  });
-}
-
+// Configure how notifications appear when the app is foregrounded
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -32,45 +11,60 @@ Notifications.setNotificationHandler({
 });
 
 export const requestNotificationPermissions = async (): Promise<boolean> => {
-  if (!Device.isDevice) {
-    console.warn('Push notifications only work on physical devices');
-    return false;
-  }
+  // Local notifications work on both physical devices and simulators
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    return finalStatus === 'granted';
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    if (existing === 'granted') return true;
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
   } catch (err) {
     console.warn('⚠️ Could not request notification permissions:', err);
     return false;
   }
 };
 
-export const registerBackgroundTask = async () => {
-  if (!TaskManager) {
-    console.warn('⚠️ Skipping background task registration — TaskManager unavailable');
-    return;
-  }
-  try {
-    await Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
-    console.log('Notification background task registered.');
-  } catch (err) {
-    // Non-fatal — app works fine without background notifications
-    console.warn('⚠️ Failed to register background task (non-fatal):', err);
-  }
-};
-
-export const sendLocalNotification = async (title: string, body: string) => {
+/**
+ * Fire an immediate local notification. Works in Expo Go on SDK 54.
+ * No push token, no remote server, no background task needed.
+ */
+export const sendLocalNotification = async (title: string, body: string): Promise<void> => {
   try {
     await Notifications.scheduleNotificationAsync({
       content: { title, body, sound: true },
-      trigger: null,
+      trigger: null, // null = fire immediately
     });
   } catch (err) {
     console.warn('⚠️ Could not send local notification:', err);
   }
+};
+
+// ── Order-ready tracker ───────────────────────────────────────────────────────
+// Keeps a Set of order IDs we have already notified about so we don't
+// spam the waiter on every poll cycle.
+const notifiedOrders = new Set<string>();
+
+/**
+ * Call this on every dashboard poll with the current sessions array.
+ * Fires a local notification for any order that just became READY.
+ */
+export const notifyReadyOrders = async (sessions: any[]): Promise<void> => {
+  for (const session of sessions) {
+    for (const order of session.orders ?? []) {
+      if (order.status === 'READY' && !notifiedOrders.has(order.id)) {
+        notifiedOrders.add(order.id);
+        await sendLocalNotification(
+          '🍽️ Order Ready!',
+          `Table ${session.table?.tableNumber ?? ''} — Order ${order.orderNumber} is ready to serve`
+        );
+      }
+    }
+  }
+};
+
+/**
+ * Clear the notified-orders set when the waiter logs out,
+ * so notifications fire fresh on the next login.
+ */
+export const clearNotificationCache = (): void => {
+  notifiedOrders.clear();
 };

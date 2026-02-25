@@ -3,7 +3,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { useAuthStore } from '../store/authStore';
-import { registerBackgroundTask, requestNotificationPermissions } from '../services/notifications';
+// Notifications are initialised in the dashboard screen, not here
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,13 +22,6 @@ function RootLayoutNav() {
   // This is more reliable than a blind timeout because it fires exactly when
   // AsyncStorage deserialization is complete.
   const { user, token, hasHydrated } = useAuthStore();
-
-  // Init notifications once — fully non-fatal, won't block the app
-  useEffect(() => {
-    requestNotificationPermissions()
-      .then((granted) => { if (granted) registerBackgroundTask(); })
-      .catch((err) => console.warn('⚠️ Notification init failed (non-fatal):', err));
-  }, []);
 
   // Guard: don't redirect until Zustand has rehydrated from AsyncStorage
   useEffect(() => {

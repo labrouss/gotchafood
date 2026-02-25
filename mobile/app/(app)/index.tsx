@@ -5,9 +5,11 @@ import {
     TextInput,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { waiterAPI } from '../../services/api';
+import { requestNotificationPermissions, notifyReadyOrders, clearNotificationCache } from '../../services/notifications';
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: '#F59E0B',
@@ -19,6 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function DashboardScreen() {
     const queryClient = useQueryClient();
+    const insets = useSafeAreaInsets();
     const { user, logout } = useAuthStore();
 
     // --- MODAL STATE ---
@@ -32,12 +35,24 @@ export default function DashboardScreen() {
     const [customerSearching, setCustomerSearching] = useState(false);
     const [customerFound, setCustomerFound] = useState<any>(null);
 
+    // Request local notification permissions once on mount
+    useEffect(() => {
+        requestNotificationPermissions();
+    }, []);
+
     const { data, isLoading, refetch, isRefetching } = useQuery({
         queryKey: ['waiterDashboard'],
         queryFn: () => waiterAPI.getDashboard(),
         refetchInterval: 10000,
         select: (r) => r.data,
     });
+
+    // Fire a local notification whenever an order flips to READY
+    useEffect(() => {
+        if (myTables.length > 0) {
+            notifyReadyOrders(myTables);
+        }
+    }, [myTables]);
 
     // --- LOGIC HANDLERS ---
 
@@ -150,7 +165,7 @@ export default function DashboardScreen() {
     const handleLogout = () => {
         Alert.alert('Logout', 'Are you sure?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Logout', style: 'destructive', onPress: async () => { await logout(); router.replace('/(auth)/login'); } },
+            { text: 'Logout', style: 'destructive', onPress: async () => { clearNotificationCache(); await logout(); router.replace('/(auth)/login'); } },
         ]);
     };
 
@@ -163,7 +178,7 @@ export default function DashboardScreen() {
     return (
         <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
                 <View>
                     <Text style={styles.headerTitle}>👋 {user?.firstName || 'Waiter'}</Text>
                     <Text style={styles.headerSubtitle}>{user?.email}</Text>
@@ -500,7 +515,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { backgroundColor: '#4F46E5', padding: 20, paddingTop: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    header: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
     headerSubtitle: { fontSize: 13, color: '#E0E7FF' },
     logoutBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 8 },
