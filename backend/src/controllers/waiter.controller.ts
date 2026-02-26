@@ -505,6 +505,9 @@ export const markOrderServed = async (req: Request, res: Response, next: NextFun
       },
     });
 
+    // Award loyalty points now that the order is served
+    await awardLoyaltyPoints(orderId);
+
     // Emit real-time notification
     io.emit('order-updated', updatedOrder);
 
@@ -793,3 +796,84 @@ export const getWaiterStats = async (req: Request, res: Response, next: NextFunc
     next(error);
   }
 };
+
+// Award loyalty points to the customer linked to an order.
+// 1 point per EUR1 of totalAmount. Handles tier upgrades automatically.
+// Non-fatal: errors are logged but never bubble up to fail the order update.
+async function awardLoyaltyPoints(orderId: string): Promise<void> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true, totalAmount: true, orderNumber: true, loyaltyPhone: true },
+    });
+
+    if (!order) return;
+
+    // Resolve userId from loyaltyPhone if the order was linked by phone only
+    let userId = order.userId;
+    if (!userId && order.loyaltyPhone) {
+      const user = await prisma.user.findFirst({
+        where: { phone: order.loyaltyPhone },
+        select: { id: true },
+      });
+      userId = user?.id ?? null;
+    }
+
+    if (!userId) return; // No customer linked — nothing to award
+
+    const points = Math.floor(Number(order.totalAmount));
+    if (points <= 0) return;
+
+    const loyalty = await prisma.loyaltyReward.upsert({
+      where: { userId },
+      update: {
+        points: { increment: points },
+        lifetimePoints: { increment: points },
+      },
+      create: {
+        userId,
+        points,
+        lifetimePoints: points,
+        tier: 'bronze',
+      },
+    });
+
+    await prisma.rewardTransaction.create({
+      data: {
+        userId,
+        orderId,
+        points,
+        type: 'earned',
+        reason: `Table order #${order.orderNumber}`,
+      },
+    });
+
+    // Check for tier upgrade
+    const totalLifetime = loyalty.lifetimePoints; // already incremented by upsert
+    let newTier = loyalty.tier;
+    if (totalLifetime >= 500) newTier = 'platinum';
+    else if (totalLifetime >= 200) newTier = 'gold';
+    else if (totalLifetime >= 100) newTier = 'silver';
+
+    if (newTier !== loyalty.tier) {
+      const bonusPoints = newTier === 'platinum' ? 50 : newTier === 'gold' ? 25 : 10;
+      await prisma.loyaltyReward.update({
+        where: { userId },
+        data: { tier: newTier, points: { increment: bonusPoints } },
+      });
+      await prisma.rewardTransaction.create({
+        data: {
+          userId,
+          points: bonusPoints,
+          type: 'milestone',
+          reason: `${newTier.charAt(0).toUpperCase() + newTier.slice(1)} tier achieved!`,
+        },
+      });
+    }
+
+    console.log(`Awarded ${points} points to user ${userId} for order #${order.orderNumber}`);
+  } catch (error) {
+    console.error('Error awarding loyalty points:', error);
+    // Non-fatal -- do not rethrow
+  }
+}
