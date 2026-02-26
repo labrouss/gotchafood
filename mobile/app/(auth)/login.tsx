@@ -5,9 +5,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';  // ← ADD THIS
 import { useAuthStore } from '../../store/authStore';
+import { useTranslation } from 'react-i18next';
+import { useLanguageStore, LANGUAGES } from '../../store/languageStore';
 
 export default function LoginScreen() {
     const { login } = useAuthStore();
+    const { t } = useTranslation();
+    const { language, setLanguage } = useLanguageStore();
     const router = useRouter();  // ← ADD THIS
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -15,7 +19,7 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please enter email and password');
+            Alert.alert(t('auth.error'), t('auth.emptyFields'));
             return;
         }
         setLoading(true);
@@ -39,7 +43,7 @@ export default function LoginScreen() {
                 message = err.message || 'Unknown error';
             }
             
-            Alert.alert('Login Failed', message);
+            Alert.alert(t('auth.loginFailed'), message);
         } finally {
             setLoading(false);
         }
@@ -52,12 +56,12 @@ export default function LoginScreen() {
         >
             <View style={styles.card}>
                 <Text style={styles.logo}>🍽️</Text>
-                <Text style={styles.title}>Waiter App</Text>
-                <Text style={styles.subtitle}>Sign in to your account</Text>
+                <Text style={styles.title}>{t('auth.title')}</Text>
+                <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
 
                 <TextInput
                     style={styles.input}
-                    placeholder="Email"
+                    placeholder={t('auth.email')}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -66,7 +70,7 @@ export default function LoginScreen() {
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Password"
+                    placeholder={t('auth.password')}
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry
                     value={password}
@@ -82,9 +86,34 @@ export default function LoginScreen() {
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.buttonText}>Sign In</Text>
+                        <Text style={styles.buttonText}>{t('auth.signIn')}</Text>
                     )}
                 </TouchableOpacity>
+            {/* Language Switcher */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 20 }}>
+                {LANGUAGES.map((lang) => (
+                    <TouchableOpacity
+                        key={lang.code}
+                        onPress={() => setLanguage(lang.code)}
+                        style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 8,
+                            backgroundColor: language === lang.code ? '#4F46E5' : '#F3F4F6',
+                            borderWidth: 1,
+                            borderColor: language === lang.code ? '#4F46E5' : '#E5E7EB',
+                        }}
+                    >
+                        <Text style={{
+                            fontSize: 13,
+                            fontWeight: '600',
+                            color: language === lang.code ? '#fff' : '#6B7280',
+                        }}>
+                            {lang.flag} {lang.code.toUpperCase()}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
             </View>
         </KeyboardAvoidingView>
     );

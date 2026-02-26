@@ -13,7 +13,10 @@
         },
         "ios": {
             "supportsTablet": true,
-            "bundleIdentifier": "com.foodapp.waiter"
+            "bundleIdentifier": "com.foodapp.waiter",
+            "infoPlist": {
+                "NSCameraUsageDescription": "Used to scan customer loyalty QR codes at check-in."
+            }
         },
         "android": {
             "adaptiveIcon": {
@@ -30,6 +33,13 @@
                     "icon": "./assets/notification-icon.png",
                     "color": "#4F46E5",
                     "sounds": []
+                }
+            ],
+            [
+                "expo-camera",
+                {
+                    "cameraPermission": "Allow Waiter App to use your camera to scan customer loyalty QR codes.",
+                    "microphonePermission": false
                 }
             ]
         ],

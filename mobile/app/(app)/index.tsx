@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     RefreshControl, Alert, ActivityIndicator, ScrollView, Modal,
-    TextInput,
+    TextInput, KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { waiterAPI } from '../../services/api';
 import { requestNotificationPermissions, notifyReadyOrders, clearNotificationCache } from '../../services/notifications';
+import QRScannerModal from '../../components/QRScannerModal';
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: '#F59E0B',
@@ -34,6 +35,9 @@ export default function DashboardScreen() {
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerSearching, setCustomerSearching] = useState(false);
     const [customerFound, setCustomerFound] = useState<any>(null);
+    const [qrScannerVisible, setQrScannerVisible] = useState(false);
+    // Keyed by tableId — carries loyalty phone to take-order without storing in DB
+    const [sessionLoyaltyPhones, setSessionLoyaltyPhones] = useState<Record<string,string>>({});
 
     // Request local notification permissions once on mount
     useEffect(() => {
@@ -132,18 +136,28 @@ export default function DashboardScreen() {
             };
             
             if (customerFound) {
-                sessionData.customerId = customerFound.id;
+                // Only send customerId for walk-in Customer records (phone lookup).
+                // QR-scanned app Users have id='' — sending their User.id as
+                // customerId causes a FK error (different table).
+                if (customerFound.id) {
+                    sessionData.customerId = customerFound.id;
+                }
                 sessionData.loyaltyDiscount = customerFound.discount || 0;
             }
             
             await waiterAPI.startSession(sessionData);
             queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
-            
+
+            // Store loyalty phone in state keyed by tableId so take-order can use it
+            if (customerFound?.phone && selectedTable) {
+                setSessionLoyaltyPhones(prev => ({ ...prev, [selectedTable.id]: customerFound.phone }));
+            }
+
             setCustomerModalVisible(false);
             setSelectedTable(null);
             setCustomerPhone('');
             setCustomerFound(null);
-            
+
             Alert.alert('Success', `Table ${selectedTable.number} started!${customerFound ? ' with loyalty applied' : ''}`);
         } catch (e: any) {
             Alert.alert('Error', 'Failed to start session');
@@ -280,7 +294,7 @@ export default function DashboardScreen() {
                                             style={styles.actionBtn}
                                             onPress={() => router.push({
                                                 pathname: `/take-order/${session.tableId}`,
-                                                params: { sessionId: session.id, tableNumber: session.table.tableNumber }
+                                                params: { sessionId: session.id, tableNumber: session.table.tableNumber, loyaltyPhone: sessionLoyaltyPhones[session.tableId] || '' }
                                             })}
                                         >
                                             <Text style={styles.btnText}>📝 New Order</Text>
@@ -394,120 +408,158 @@ export default function DashboardScreen() {
                 animationType="slide"
                 transparent={true}
                 visible={customerModalVisible}
-                onRequestClose={() => setCustomerModalVisible(false)}
+                onRequestClose={() => { Keyboard.dismiss(); setCustomerModalVisible(false); }}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
+                {/*
+                  KeyboardAvoidingView lives inside the Modal so it only affects
+                  this bottom sheet. On iOS it pads the content up by the exact
+                  keyboard height; on Android it shrinks the available height.
+                */}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                    keyboardVerticalOffset={0}
+                >
+                    <View style={styles.customerModalSheet}>
+                        {/* Drag handle */}
+                        <View style={styles.dragHandle} />
+
+                        {/* Header */}
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>🎫 Customer Check-in</Text>
-                            <TouchableOpacity onPress={() => setCustomerModalVisible(false)}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.modalTitle}>🎫 Customer Check-in</Text>
+                                <Text style={styles.modalSubtitle}>
+                                    Table {selectedTable?.number}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => { Keyboard.dismiss(); setCustomerModalVisible(false); }}
+                                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                            >
                                 <Text style={styles.closeX}>✕</Text>
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.modalSubtitle}>
-                            Table {selectedTable?.number} • Scan card or enter phone
-                        </Text>
 
-                        {/* Customer Info Display */}
-                        {customerFound && (
-                            <View style={styles.customerFoundBox}>
-                                <Text style={styles.customerFoundTitle}>✅ Customer Found!</Text>
-                                <Text style={styles.customerName}>{customerFound.name}</Text>
-                                <View style={styles.customerStatsRow}>
-                                    <View style={styles.customerStat}>
-                                        <Text style={styles.statLabel}>Points</Text>
-                                        <Text style={styles.statValue}>{customerFound.points || 0}</Text>
-                                    </View>
-                                    <View style={styles.customerStat}>
-                                        <Text style={styles.statLabel}>Discount</Text>
-                                        <Text style={styles.statValue}>{customerFound.discount || 0}%</Text>
-                                    </View>
-                                    <View style={styles.customerStat}>
-                                        <Text style={styles.statLabel}>Visits</Text>
-                                        <Text style={styles.statValue}>{customerFound.visits || 0}</Text>
-                                    </View>
+                        {/*
+                          ScrollView lets content scroll up when the keyboard
+                          appears, keeping the phone input always visible.
+                          keyboardShouldPersistTaps="handled" means tapping the
+                          Search button works without first dismissing keyboard.
+                        */}
+                        <ScrollView
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 24 }}
+                        >
+                            {/* ── 1. PHONE INPUT — top priority ── */}
+                            <View style={styles.inputSection}>
+                                <Text style={styles.inputLabel}>📱 Phone Number</Text>
+                                <View style={styles.inputRow}>
+                                    <TextInput
+                                        style={styles.phoneInput}
+                                        placeholder="Enter phone number"
+                                        placeholderTextColor="#9CA3AF"
+                                        keyboardType="phone-pad"
+                                        returnKeyType="search"
+                                        value={customerPhone}
+                                        onChangeText={setCustomerPhone}
+                                        onSubmitEditing={lookupCustomer}
+                                        maxLength={15}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.lookupBtn, customerSearching && { opacity: 0.6 }]}
+                                        onPress={lookupCustomer}
+                                        disabled={customerSearching}
+                                    >
+                                        {customerSearching ? (
+                                            <ActivityIndicator color="#fff" size="small" />
+                                        ) : (
+                                            <Text style={styles.lookupBtnText}>Search</Text>
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
                             </View>
-                        )}
 
-                        {/* Phone Input */}
-                        <View style={styles.inputSection}>
-                            <Text style={styles.inputLabel}>📱 Phone Number</Text>
-                            <View style={styles.inputRow}>
-                                <TextInput
-                                    style={styles.phoneInput}
-                                    placeholder="Enter phone number"
-                                    placeholderTextColor="#9CA3AF"
-                                    keyboardType="phone-pad"
-                                    value={customerPhone}
-                                    onChangeText={setCustomerPhone}
-                                    maxLength={15}
-                                />
-                                <TouchableOpacity 
-                                    style={[styles.lookupBtn, customerSearching && { opacity: 0.6 }]}
-                                    onPress={lookupCustomer}
-                                    disabled={customerSearching}
-                                >
-                                    {customerSearching ? (
-                                        <ActivityIndicator color="#fff" size="small" />
-                                    ) : (
-                                        <Text style={styles.lookupBtnText}>Search</Text>
-                                    )}
-                                </TouchableOpacity>
+                            {/* ── 2. CUSTOMER FOUND CARD ── */}
+                            {customerFound && (
+                                <View style={styles.customerFoundBox}>
+                                    <Text style={styles.customerFoundTitle}>✅ Customer Found!</Text>
+                                    <Text style={styles.customerName}>{customerFound.name}</Text>
+                                    <View style={styles.customerStatsRow}>
+                                        <View style={styles.customerStat}>
+                                            <Text style={styles.statLabel}>Points</Text>
+                                            <Text style={styles.statValue}>{customerFound.points || 0}</Text>
+                                        </View>
+                                        <View style={styles.customerStat}>
+                                            <Text style={styles.statLabel}>Discount</Text>
+                                            <Text style={styles.statValue}>{customerFound.discount || 0}%</Text>
+                                        </View>
+                                        <View style={styles.customerStat}>
+                                            <Text style={styles.statLabel}>Visits</Text>
+                                            <Text style={styles.statValue}>{customerFound.visits || 0}</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* ── 3. SCAN CARD ── */}
+                            <TouchableOpacity
+                                style={styles.scanBtn}
+                                onPress={() => {
+                                    Keyboard.dismiss();
+                                    setCustomerModalVisible(false);
+                                    setQrScannerVisible(true);
+                                }}
+                            >
+                                <Text style={styles.scanBtnText}>📷 Scan Loyalty Card</Text>
+                            </TouchableOpacity>
+
+                            {/* ── 4. PARTY SIZE ── */}
+                            <View style={styles.partySizeSection}>
+                                <Text style={styles.inputLabel}>👥 Party Size</Text>
+                                <View style={styles.partySizeRow}>
+                                    {[1, 2, 3, 4].map((n) => (
+                                        <TouchableOpacity
+                                            key={n}
+                                            style={styles.partySizeBtn}
+                                            onPress={() => confirmStartSession(n)}
+                                        >
+                                            <Text style={styles.partySizeBtnText}>{n === 4 ? '4+' : String(n)}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
-                        </View>
 
-                        {/* Scan Card Option */}
-                        <TouchableOpacity 
-                            style={styles.scanBtn}
-                            onPress={() => {
-                                Alert.alert('Scanner', 'Barcode scanner feature coming soon!');
-                            }}
-                        >
-                            <Text style={styles.scanBtnText}>📷 Scan Loyalty Card</Text>
-                        </TouchableOpacity>
-
-                        {/* Party Size Selection */}
-                        <View style={styles.partySizeSection}>
-                            <Text style={styles.inputLabel}>👥 Party Size</Text>
-                            <View style={styles.partySizeRow}>
-                                <TouchableOpacity 
-                                    style={styles.partySizeBtn}
-                                    onPress={() => confirmStartSession(1)}
-                                >
-                                    <Text style={styles.partySizeBtnText}>1</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={styles.partySizeBtn}
-                                    onPress={() => confirmStartSession(2)}
-                                >
-                                    <Text style={styles.partySizeBtnText}>2</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={styles.partySizeBtn}
-                                    onPress={() => confirmStartSession(3)}
-                                >
-                                    <Text style={styles.partySizeBtnText}>3</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={styles.partySizeBtn}
-                                    onPress={() => confirmStartSession(4)}
-                                >
-                                    <Text style={styles.partySizeBtnText}>4+</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Skip Option */}
-                        <TouchableOpacity 
-                            style={styles.skipBtn}
-                            onPress={skipCustomerLookup}
-                        >
-                            <Text style={styles.skipBtnText}>Skip • Continue without loyalty</Text>
-                        </TouchableOpacity>
+                            {/* ── 5. SKIP ── */}
+                            <TouchableOpacity
+                                style={styles.skipBtn}
+                                onPress={skipCustomerLookup}
+                            >
+                                <Text style={styles.skipBtnText}>Skip • Continue without loyalty</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
+
+            {/* QR Scanner — full screen, layered on top of everything */}
+            <QRScannerModal
+                visible={qrScannerVisible}
+                onClose={() => {
+                    setQrScannerVisible(false);
+                    // Reopen customer modal so waiter can use phone instead
+                    setCustomerModalVisible(true);
+                }}
+                onCustomerFound={(customer) => {
+                    setCustomerFound(customer);
+                    setQrScannerVisible(false);
+                    // Reopen customer modal to show found customer + pick party size
+                    setCustomerModalVisible(true);
+                }}
+                identifyLoyalty={waiterAPI.identifyLoyalty}
+                lookupLoyaltyCustomer={waiterAPI.lookupLoyaltyCustomer}
+                lookupUserLoyalty={waiterAPI.lookupUserLoyalty}
+            />
         </View>
     );
 }
@@ -565,6 +617,9 @@ const styles = StyleSheet.create({
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+    // Customer modal uses its own sheet style to allow keyboard avoidance + scroll
+    customerModalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '92%' },
+    dragHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 16 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
     modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#111827' },
     modalSubtitle: { fontSize: 14, color: '#6B7280', marginBottom: 20 },

@@ -98,3 +98,55 @@ export const lookupCustomer = async (req: Request, res: Response) => {
         });
     }
 };
+
+
+export const lookupUserLoyalty = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone } = req.params;
+
+    const user = await prisma.user.findFirst({
+      where: { phone },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        loyaltyReward: {
+          select: {
+            points: true,
+            tier: true,
+            lifetimePoints: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return res.json({ success: true, user: null });
+    }
+
+    // Resolve discount % from tier name
+    let discountPercent = 0;
+    if (user.loyaltyReward?.tier) {
+      const tier = await prisma.loyaltyTier.findUnique({
+        where: { name: user.loyaltyReward.tier },
+      });
+      if (tier?.isActive) discountPercent = tier.discount;
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        phone: user.phone,
+        points: user.loyaltyReward?.points ?? 0,
+        discount: discountPercent,
+        tier: user.loyaltyReward?.tier ?? 'bronze',
+        lifetimePoints: user.loyaltyReward?.lifetimePoints ?? 0,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

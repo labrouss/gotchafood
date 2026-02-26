@@ -1,0 +1,403 @@
+#!/bin/bash
+# ═══════════════════════════════════════════════════════════════════════════════
+# GotchaFood — Customer Deployment Setup
+# Usage: ./setup.sh [--config path/to/customer.config.json] [--reset]
+# ═══════════════════════════════════════════════════════════════════════════════
+
+set -e
+
+# ── Colors ───────────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+
+log()    { echo -e "${GREEN}✅ $1${NC}"; }
+info()   { echo -e "${CYAN}ℹ️  $1${NC}"; }
+warn()   { echo -e "${YELLOW}⚠️  $1${NC}"; }
+error()  { echo -e "${RED}❌ $1${NC}"; exit 1; }
+header() { echo -e "\n${BOLD}${BLUE}═══ $1 ═══${NC}\n"; }
+
+# ── Parse args ────────────────────────────────────────────────────────────────
+CONFIG_FILE="customer.config.json"
+RESET_DB=false
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --config) CONFIG_FILE="$2"; shift ;;
+        --reset)  RESET_DB=true ;;
+        *) error "Unknown option: $1" ;;
+    esac
+    shift
+done
+
+# ── Check requirements ────────────────────────────────────────────────────────
+header "Checking requirements"
+
+command -v docker        &>/dev/null || error "Docker is not installed. Install from https://docs.docker.com/get-docker/"
+command -v docker-compose &>/dev/null || docker compose version &>/dev/null || error "Docker Compose is not installed."
+command -v python3       &>/dev/null || error "Python3 is required for config parsing."
+[ -f "$CONFIG_FILE" ]                || error "Config file not found: $CONFIG_FILE\n   Copy customer.config.json, fill it in, then run this script."
+
+log "All requirements met"
+
+# ── Read config with Python ───────────────────────────────────────────────────
+header "Reading configuration: $CONFIG_FILE"
+
+read_config() {
+    python3 -c "
+import json, sys
+with open('$CONFIG_FILE') as f:
+    c = json.load(f)
+keys = '$1'.split('.')
+val = c
+for k in keys:
+    val = val[k]
+print(val)
+" 2>/dev/null || echo "$2"
+}
+
+CUSTOMER_NAME=$(read_config "customer.name" "My Restaurant")
+CUSTOMER_SLUG=$(read_config "customer.slug" "my-restaurant")
+SERVER_HOST=$(read_config "server.host" "localhost")
+BACKEND_PORT=$(read_config "server.backendPort" "3000")
+FRONTEND_PORT=$(read_config "server.frontendPort" "5173")
+MOBILE_PORT=$(read_config "server.mobileMetroPort" "8081")
+DB_NAME=$(read_config "database.name" "food_ordering")
+DB_USER=$(read_config "database.user" "foodapp")
+DB_PASS=$(read_config "database.password" "foodapp123")
+DB_ROOT_PASS=$(read_config "database.rootPassword" "rootpassword")
+DB_PORT=$(read_config "database.port" "3306")
+JWT_SECRET=$(read_config "auth.jwtSecret" "change-me")
+JWT_EXPIRES=$(read_config "auth.jwtExpiresIn" "7d")
+ADMIN_EMAIL=$(read_config "adminUser.email" "admin@example.com")
+ADMIN_PASS=$(read_config "adminUser.password" "admin123")
+ADMIN_FIRST=$(read_config "adminUser.firstName" "Admin")
+ADMIN_LAST=$(read_config "adminUser.lastName" "User")
+ADMIN_PHONE=$(read_config "adminUser.phone" "")
+MOBILE_ENABLED=$(read_config "mobile.enabled" "true")
+EXPO_TOKEN=$(read_config "mobile.expoToken" "")
+NGROK_TOKEN=$(read_config "mobile.ngrokAuthToken" "")
+EMAIL_ENABLED=$(read_config "email.enabled" "false")
+SMTP_HOST=$(read_config "email.smtpHost" "")
+SMTP_PORT=$(read_config "email.smtpPort" "587")
+SMTP_USER=$(read_config "email.smtpUser" "")
+SMTP_PASS=$(read_config "email.smtpPass" "")
+EMAIL_FROM_NAME=$(read_config "email.fromName" "$CUSTOMER_NAME")
+EMAIL_FROM=$(read_config "email.fromEmail" "")
+LOAD_DEMO=$(read_config "seed.loadDemoData" "true")
+DEFAULT_LANG=$(read_config "customer.defaultLanguage" "en")
+TIMEZONE=$(read_config "customer.timezone" "UTC")
+CURRENCY=$(read_config "customer.currency" "EUR")
+CURRENCY_SYMBOL=$(read_config "customer.currencySymbol" "€")
+
+# Validate critical fields
+[ "$DB_PASS" = "CHANGE_ME_STRONG_PASSWORD" ]    && error "Set database.password in $CONFIG_FILE before running setup."
+[ "$JWT_SECRET" = "CHANGE_ME_LONG_RANDOM_SECRET_MIN_32_CHARS" ] && error "Set auth.jwtSecret in $CONFIG_FILE before running setup."
+[ "$ADMIN_PASS" = "CHANGE_ME_ADMIN_PASSWORD" ]  && error "Set adminUser.password in $CONFIG_FILE before running setup."
+
+# Derive API URL
+if [ "$SERVER_HOST" = "localhost" ] || [ "$SERVER_HOST" = "127.0.0.1" ]; then
+    API_URL="http://localhost:${BACKEND_PORT}"
+    FRONTEND_URL="http://localhost:${FRONTEND_PORT}"
+else
+    API_URL="http://${SERVER_HOST}:${BACKEND_PORT}"
+    FRONTEND_URL="http://${SERVER_HOST}:${FRONTEND_PORT}"
+fi
+
+info "Customer:   $CUSTOMER_NAME"
+info "Host:       $SERVER_HOST"
+info "Backend:    $API_URL"
+info "Frontend:   $FRONTEND_URL"
+info "DB:         $DB_NAME @ $DB_USER"
+info "Language:   $DEFAULT_LANG"
+info "Mobile:     $MOBILE_ENABLED"
+
+# ── Generate .env files ───────────────────────────────────────────────────────
+header "Generating environment files"
+
+# backend/.env
+cat > backend/.env << EOF
+# Auto-generated by setup.sh from $CONFIG_FILE
+# Generated: $(date)
+
+DATABASE_URL="mysql://${DB_USER}:${DB_PASS}@database:${DB_PORT}/${DB_NAME}"
+JWT_SECRET="${JWT_SECRET}"
+JWT_EXPIRES_IN="${JWT_EXPIRES}"
+NODE_ENV="production"
+PORT=${BACKEND_PORT}
+FRONTEND_URL="${FRONTEND_URL}"
+CUSTOMER_NAME="${CUSTOMER_NAME}"
+DEFAULT_LANGUAGE="${DEFAULT_LANG}"
+TIMEZONE="${TIMEZONE}"
+CURRENCY="${CURRENCY}"
+CURRENCY_SYMBOL="${CURRENCY_SYMBOL}"
+EOF
+
+if [ "$EMAIL_ENABLED" = "true" ]; then
+cat >> backend/.env << EOF
+SMTP_HOST="${SMTP_HOST}"
+SMTP_PORT=${SMTP_PORT}
+SMTP_USER="${SMTP_USER}"
+SMTP_PASS="${SMTP_PASS}"
+EMAIL_FROM_NAME="${EMAIL_FROM_NAME}"
+EMAIL_FROM="${EMAIL_FROM}"
+EOF
+fi
+log "backend/.env written"
+
+# frontend/.env
+cat > frontend/.env << EOF
+# Auto-generated by setup.sh from $CONFIG_FILE
+VITE_API_URL=${API_URL}/api
+VITE_APP_NAME="${CUSTOMER_NAME}"
+VITE_DEFAULT_LANGUAGE="${DEFAULT_LANG}"
+VITE_CURRENCY_SYMBOL="${CURRENCY_SYMBOL}"
+EOF
+log "frontend/.env written"
+
+# mobile/.env  (only if mobile enabled)
+if [ "$MOBILE_ENABLED" = "true" ]; then
+cat > mobile/.env << EOF
+# Auto-generated by setup.sh from $CONFIG_FILE
+API_URL=${API_URL}
+EXPO_PUBLIC_API_URL=${API_URL}
+EOF
+log "mobile/.env written"
+fi
+
+# ── Generate docker-compose.yml ───────────────────────────────────────────────
+header "Generating docker-compose.yml"
+
+MOBILE_SERVICE=""
+if [ "$MOBILE_ENABLED" = "true" ]; then
+MOBILE_SERVICE="
+  # Waiter Mobile App (Expo)
+  expo-mobile:
+    image: node:20-slim
+    container_name: ${CUSTOMER_SLUG}-mobile
+    restart: unless-stopped
+    working_dir: /app
+    entrypoint: [\"/bin/sh\", \"/app/entrypoint.sh\"]
+    ports:
+      - \"${MOBILE_PORT}:8081\"
+      - \"19000:19000\"
+      - \"19001:19001\"
+    environment:
+      API_URL: ${API_URL}
+      EXPO_PUBLIC_API_URL: ${API_URL}
+      REACT_NATIVE_PACKAGER_HOSTNAME: ${SERVER_HOST}
+      EXPO_DEVTOOLS_LISTEN_ADDRESS: 0.0.0.0
+      CI: \"false\"$([ -n "$EXPO_TOKEN" ] && echo "
+      EXPO_TOKEN: ${EXPO_TOKEN}")$([ -n "$NGROK_TOKEN" ] && echo "
+      NGROK_AUTHTOKEN: ${NGROK_TOKEN}")
+    volumes:
+      - ./mobile:/app
+    depends_on:
+      - backend
+    networks:
+      - app-network
+"
+fi
+
+cat > docker-compose.yml << EOF
+# Auto-generated by setup.sh from $CONFIG_FILE — do not edit manually
+# Generated: $(date)
+version: '3.8'
+
+services:
+  database:
+    image: mysql:8.0
+    container_name: ${CUSTOMER_SLUG}-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    ports:
+      - "${DB_PORT}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    image: node:20-slim
+    container_name: ${CUSTOMER_SLUG}-backend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "${BACKEND_PORT}:3000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - app-network
+    command: sh -c "apt-get update -qq && apt-get install -y openssl -qq && npm install && npx prisma generate && npm run dev"
+
+  frontend:
+    image: node:20-slim
+    container_name: ${CUSTOMER_SLUG}-frontend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "${FRONTEND_PORT}:5173"
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    command: sh -c "npm install && npm run dev -- --host"
+${MOBILE_SERVICE}
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: ${CUSTOMER_SLUG}-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASS}
+    depends_on:
+      - database
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+EOF
+log "docker-compose.yml written"
+
+# ── Patch seed.ts with customer admin credentials ─────────────────────────────
+header "Patching seed file with admin credentials"
+
+python3 << PYEOF
+import re
+
+with open('backend/prisma/seed.ts') as f:
+    seed = f.read()
+
+# Replace admin user block
+admin_pattern = r"(email:\s*')[^']*(',\s*\n\s*password:\s*hashedPassword,\s*\n\s*firstName:\s*')[^']*(',\s*\n\s*lastName:\s*')[^']*(',\s*\n\s*phone:\s*')[^']*(',\s*\n\s*role:\s*'ADMIN')"
+admin_replace = (
+    f"email: '${ADMIN_EMAIL}',\\n      password: hashedPassword,"
+    f"\\n      firstName: '${ADMIN_FIRST}',\\n      lastName: '${ADMIN_LAST}',"
+    f"\\n      phone: '${ADMIN_PHONE}',\\n      role: 'ADMIN'"
+)
+
+# Simpler targeted replacement
+seed = re.sub(
+    r"email: 'admin@foodapp\.com'",
+    f"email: '{os.environ.get('ADMIN_EMAIL', 'admin@example.com')}'",
+    seed
+)
+seed = re.sub(
+    r"firstName: 'Admin',\s*\n(\s*)lastName: 'User',\s*\n(\s*)phone: '[^']*',\s*\n(\s*)role: 'ADMIN'",
+    f"firstName: '$ADMIN_FIRST',\n\\1lastName: '$ADMIN_LAST',\n\\2phone: '$ADMIN_PHONE',\n\\3role: 'ADMIN'",
+    seed
+)
+
+with open('backend/prisma/seed.ts', 'w') as f:
+    f.write(seed)
+
+print("Seed patched")
+PYEOF
+
+log "Seed file patched with admin credentials"
+
+# ── Reset DB if requested ─────────────────────────────────────────────────────
+if [ "$RESET_DB" = true ]; then
+    warn "Resetting database volumes (all data will be lost)..."
+    docker-compose down -v 2>/dev/null || true
+    log "Volumes cleared"
+fi
+
+# ── Start containers ──────────────────────────────────────────────────────────
+header "Starting Docker containers"
+
+# Use 'docker compose' or 'docker-compose' depending on what's available
+if command -v docker-compose &>/dev/null; then
+    DC="docker-compose"
+else
+    DC="docker compose"
+fi
+
+$DC up -d --build
+log "Containers started"
+
+# ── Wait for backend to be ready ──────────────────────────────────────────────
+header "Waiting for backend to be ready"
+
+echo -n "Waiting"
+for i in $(seq 1 60); do
+    if curl -sf "http://localhost:${BACKEND_PORT}/api/health" > /dev/null 2>&1 || \
+       curl -sf "http://localhost:${BACKEND_PORT}/api/menu" > /dev/null 2>&1; then
+        echo ""
+        log "Backend is up"
+        break
+    fi
+    echo -n "."
+    sleep 3
+    if [ $i -eq 60 ]; then
+        echo ""
+        warn "Backend health check timed out. Trying database setup anyway..."
+    fi
+done
+
+# ── Run Prisma migrations & seed ──────────────────────────────────────────────
+header "Running database migrations"
+
+CONTAINER="${CUSTOMER_SLUG}-backend"
+
+# Wait for container
+sleep 5
+
+$DC exec backend sh -c "npx prisma db push --accept-data-loss" && log "Prisma schema pushed" || warn "prisma db push had issues — check logs"
+
+if [ "$LOAD_DEMO" = "true" ]; then
+    info "Loading demo data (seed)..."
+    $DC exec backend sh -c "npm run prisma:seed" && log "Demo data seeded" || warn "Seeding failed — you can seed manually later with: docker exec ${CONTAINER} npm run prisma:seed"
+else
+    info "Skipping demo data (seed.loadDemoData=false)"
+    info "To seed later: docker exec ${CONTAINER} npm run prisma:seed"
+fi
+
+# ── Print summary ─────────────────────────────────────────────────────────────
+header "🎉 Setup Complete!"
+
+echo -e "${BOLD}Customer:${NC}   $CUSTOMER_NAME"
+echo ""
+echo -e "${BOLD}Access URLs:${NC}"
+echo -e "  Frontend:   ${GREEN}${FRONTEND_URL}${NC}"
+echo -e "  Backend:    ${GREEN}${API_URL}${NC}"
+echo -e "  phpMyAdmin: ${GREEN}http://${SERVER_HOST}:8080${NC}"
+[ "$MOBILE_ENABLED" = "true" ] && echo -e "  Expo Metro: ${GREEN}http://${SERVER_HOST}:${MOBILE_PORT}${NC}"
+echo ""
+echo -e "${BOLD}Admin Login:${NC}"
+echo -e "  Email:    ${CYAN}${ADMIN_EMAIL}${NC}"
+echo -e "  Password: ${CYAN}${ADMIN_PASS}${NC}"
+echo ""
+echo -e "${BOLD}Useful commands:${NC}"
+echo -e "  View logs:     ${YELLOW}${DC} logs -f backend${NC}"
+echo -e "  Stop all:      ${YELLOW}${DC} down${NC}"
+echo -e "  Full reset:    ${YELLOW}./setup.sh --reset${NC}"
+echo -e "  Re-seed DB:    ${YELLOW}docker exec ${CUSTOMER_SLUG}-backend npm run prisma:seed${NC}"
+echo -e "  Open DB GUI:   ${YELLOW}http://${SERVER_HOST}:8080${NC}"
+echo ""
+echo -e "${GREEN}${BOLD}✨ GotchaFood is running for ${CUSTOMER_NAME}!${NC}"

@@ -47,6 +47,8 @@ import ReservationForm from './pages/customer/ReservationForm';
 import MyReservations from './pages/customer/MyReservations';
 
 import { useAuthStore } from './store/authStore';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './components/LanguageSwitcher';
 import { useCartStore } from './store/cartStore';
 import { useSettingsStore } from './store/settingsStore';
 
@@ -59,6 +61,7 @@ function AppContent() {
   const itemCount = useCartStore((state) => state.getItemCount());
   const fetchSettings = useSettingsStore((state) => state.fetchSettings);
   const { storeName, logoUrl, primaryColor } = useTheme();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchSettings();
@@ -88,16 +91,16 @@ function AppContent() {
 
               <div className="flex items-center space-x-6">
                 <Link to="/" className="hover:text-yellow-300 transition">
-                  Αρχική
+		{t('nav.home')}
                 </Link>
                 <Link to="/menu" className="hover:text-yellow-300 transition">
-                  Μενού
+		{t('nav.menu')}
                 </Link>
 
                 {user && (
                   <>
                     <Link to="/my-orders" className="hover:text-yellow-300 transition">
-                      Παραγγελίες μου
+		    {t('nav.myOrders')}
                     </Link>
                     <Link to="/my-reservations" className="hover:text-yellow-300 transition">
                       📅 Κρατήσεις μου
@@ -179,6 +182,7 @@ function AppContent() {
                   </div>
                 )}
 
+                <LanguageSwitcher />
                 {user ? (
                   <>
                     <div className="relative group">
@@ -217,7 +221,7 @@ function AppContent() {
                       onClick={logout}
                       className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded transition"
                     >
-                      Αποσύνδεση
+		    {t('nav.signOut')}
                     </button>
                   </>
                 ) : (
@@ -229,13 +233,13 @@ function AppContent() {
                       to="/login"
                       className="hover:text-yellow-300 transition"
                     >
-                      Σύνδεση
+		    {t('nav.signIn')}
                     </Link>
                     <Link
                       to="/register"
                       className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded font-semibold transition"
                     >
-                      Εγγραφή
+		    {t('nav.signUp')}
                     </Link>
                   </>
                 )}
@@ -302,7 +306,7 @@ function AppContent() {
                 © {new Date().getFullYear()} {storeName} - Παραγγελία Online
               </p>
               <p className="text-xs text-gray-400 mt-2">
-                Φτιαγμένο με ❤️ και Node.js
+                {t('footer.madeWith')}
               </p>
             </div>
           </div>

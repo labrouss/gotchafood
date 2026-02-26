@@ -1,24 +1,22 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL as ENV_API_URL } from '@env';
 
-// API_URL resolution priority:
-//  1. @env (react-native-dotenv reads .env at Metro bundle time)
-//  2. EXPO_PUBLIC_API_URL (Expo's built-in env injection for Docker)
-//  3. Hard-coded fallback so the app shows a useful error rather than crashing
+// EXPO_PUBLIC_* vars are injected natively by Expo at bundle time.
+// Do NOT use react-native-dotenv — it is incompatible with expo-router
+// and causes the "Welcome to Expo" blank screen.
 const resolvedApiUrl: string =
-  (typeof ENV_API_URL === 'string' && ENV_API_URL.startsWith('http') ? ENV_API_URL : '') ||
-  (typeof (process.env as any).EXPO_PUBLIC_API_URL === 'string' ? (process.env as any).EXPO_PUBLIC_API_URL : '') ||
-  '';
+  (process.env.EXPO_PUBLIC_API_URL ?? '').startsWith('http')
+    ? (process.env.EXPO_PUBLIC_API_URL as string)
+    : '';
 
 if (!resolvedApiUrl) {
   console.error(
-    '❌ API_URL is not configured!\n' +
-    '   Set API_URL in /mobile/.env or EXPO_PUBLIC_API_URL in docker-compose environment.\n' +
-    '   Example: API_URL=http://192.168.1.100:3000'
+    '❌ EXPO_PUBLIC_API_URL is not configured!\n' +
+    '   Set it in docker-compose environment.\n' +
+    '   Example: EXPO_PUBLIC_API_URL=http://192.168.1.100:3000'
   );
 } else {
-  console.log('🌐 API URL resolved to:', resolvedApiUrl);
+  console.log('🌐 API URL:', resolvedApiUrl);
 }
 
 const api = axios.create({
@@ -32,35 +30,26 @@ api.interceptors.request.use(
     try {
       const authStorage = await AsyncStorage.getItem('auth-storage');
       if (authStorage) {
-        const parsedAuth = JSON.parse(authStorage);
-        const token = parsedAuth?.state?.token;
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
+        const parsed = JSON.parse(authStorage);
+        const token = parsed?.state?.token;
+        if (token) config.headers.Authorization = `Bearer ${token}`;
       }
-    } catch (error) {
-      console.error('❌ Error reading token from storage:', error);
+    } catch (e) {
+      console.error('❌ Error reading token:', e);
     }
     console.log('📡', config.method?.toUpperCase(), config.url);
     return config;
   },
-  (error) => {
-    console.error('❌ Request setup error:', error);
-    return Promise.reject(error);
-  }
+  (error) => { console.error('❌ Request error:', error); return Promise.reject(error); }
 );
 
 api.interceptors.response.use(
-  (response) => {
-    console.log('✅', response.status, response.config.url);
-    return response;
-  },
+  (response) => { console.log('✅', response.status, response.config.url); return response; },
   (error) => {
     if (error.response) {
       console.error('❌ HTTP', error.response.status, error.config?.url, error.response.data?.message ?? '');
     } else if (error.request) {
-      console.error('❌ No response from server — is the backend reachable?', error.config?.url);
-      console.error('   Check API_URL:', resolvedApiUrl || 'NOT SET');
+      console.error('❌ No response — server unreachable:', error.config?.url);
     } else {
       console.error('❌ Axios error:', error.message);
     }
@@ -68,55 +57,63 @@ api.interceptors.response.use(
   }
 );
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────────
 export const authAPI = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+  login:      (email: string, password: string) => api.post('/auth/login', { email, password }),
   getProfile: () => api.get('/auth/me'),
 };
 
-// ── Menu ─────────────────────────────────────────────────────────────────────
+// ── Menu ──────────────────────────────────────────────────────────────────────
 export const menuAPI = {
-  getAll: () => api.get('/menu'),
+  getAll:        () => api.get('/menu'),
   getCategories: () => api.get('/categories'),
 };
 
-// ── Waiter ───────────────────────────────────────────────────────────────────
+// ── Waiter ────────────────────────────────────────────────────────────────────
 export const waiterAPI = {
   getDashboard: () => api.get('/waiter/dashboard'),
-  clockIn: () => api.post('/waiter/clock-in'),
-  clockOut: () => api.post('/waiter/clock-out'),
+  clockIn:      () => api.post('/waiter/clock-in'),
+  clockOut:     () => api.post('/waiter/clock-out'),
 
   startSession: (data: {
-    tableId: string;
-    partySize: number;
-    customerId?: string;
-    loyaltyDiscount?: number;
-    notes?: string;
+    tableId: string; partySize: number;
+    customerId?: string; loyaltyDiscount?: number; notes?: string;
   }) => api.post('/waiter/sessions', data),
 
+  // POST (not PATCH) — backend: router.post('/sessions/:id/end', endTableSession)
   endSession: (sessionId: string, data?: { paymentMethod: string }) =>
     api.post(`/waiter/sessions/${sessionId}/end`, data),
 
-  createOrder: (sessionId: string, items: any[]) =>
-    api.post(`/waiter/sessions/${sessionId}/orders`, { items }),
+  createOrder: (sessionId: string, items: any[], loyaltyPhone?: string) =>
+    api.post(`/waiter/sessions/${sessionId}/orders`, { items, ...(loyaltyPhone ? { loyaltyPhone } : {}) }),
 
-  // Correct endpoint: PATCH /waiter/sessions/:sessionId/orders/:orderId/served
+  // PATCH /waiter/sessions/:sessionId/orders/:orderId/served
   updateOrderStatus: (sessionId: string, orderId: string) =>
     api.patch(`/waiter/sessions/${sessionId}/orders/${orderId}/served`),
 
+  // Phone lookup — route is GET /loyalty/lookup/:phone
   lookupLoyaltyCustomer: (phone: string) =>
     api.get(`/loyalty/lookup/${encodeURIComponent(phone)}`),
+
+  // QR scan — POST /user/identify-loyalty  { token: string }
+  // Decrypts the encrypted token from the customer's loyalty card QR code.
+  // Returns user: { id, firstName, lastName, email, phone }
+  identifyLoyalty: (token: string) =>
+    api.post('/user/identify-loyalty', { token }),
+
+  // Get app-user loyalty data (LoyaltyReward) by phone — used after QR scan
+  // Returns user: { id, name, phone, points, discount, tier, lifetimePoints }
+  lookupUserLoyalty: (phone: string) =>
+    api.get(`/loyalty/user-lookup/${encodeURIComponent(phone)}`),
 };
 
-// ── Orders ───────────────────────────────────────────────────────────────────
+// ── Orders ────────────────────────────────────────────────────────────────────
 export const orderAPI = {
-  getById: (id: string) => api.get(`/orders/${id}`),
-  markServed: (id: string) =>
-    api.patch(`/orders/${id}/served`),
+  getById:    (id: string) => api.get(`/orders/${id}`),
+  markServed: (id: string) => api.patch(`/orders/${id}/served`),
 };
 
-// ── Tables ───────────────────────────────────────────────────────────────────
+// ── Tables ────────────────────────────────────────────────────────────────────
 export const tablesAPI = {
   getAll: () => api.get('/tables'),
 };

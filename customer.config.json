@@ -1,0 +1,72 @@
+{
+  "_comment": "GotchaFood — Customer Deployment Config. Fill this in before running setup.sh",
+  "_version": "1.0",
+
+  "customer": {
+    "name": "My Restaurant",
+    "slug": "my-restaurant",
+    "defaultLanguage": "en",
+    "timezone": "Europe/Athens",
+    "currency": "EUR",
+    "currencySymbol": "€"
+  },
+
+  "server": {
+    "host": "localhost",
+    "backendPort": 3000,
+    "frontendPort": 5173,
+    "mobileMetroPort": 8081
+  },
+
+  "database": {
+    "name": "food_ordering",
+    "user": "foodapp",
+    "password": "CHANGE_ME_STRONG_PASSWORD",
+    "rootPassword": "CHANGE_ME_ROOT_PASSWORD",
+    "port": 3306
+  },
+
+  "auth": {
+    "jwtSecret": "CHANGE_ME_LONG_RANDOM_SECRET_MIN_32_CHARS",
+    "jwtExpiresIn": "7d"
+  },
+
+  "adminUser": {
+    "email": "admin@myrestaurant.com",
+    "password": "CHANGE_ME_ADMIN_PASSWORD",
+    "firstName": "Admin",
+    "lastName": "User",
+    "phone": ""
+  },
+
+  "mobile": {
+    "enabled": true,
+    "expoToken": "",
+    "ngrokAuthToken": ""
+  },
+
+  "email": {
+    "enabled": false,
+    "smtpHost": "",
+    "smtpPort": 587,
+    "smtpUser": "",
+    "smtpPass": "",
+    "fromName": "My Restaurant",
+    "fromEmail": ""
+  },
+
+  "features": {
+    "delivery": true,
+    "tableOrdering": true,
+    "reservations": true,
+    "loyalty": true,
+    "reviews": true,
+    "kitchenDisplay": true,
+    "counterPOS": true
+  },
+
+  "seed": {
+    "loadDemoData": true,
+    "demoDataLanguage": "en"
+  }
+}

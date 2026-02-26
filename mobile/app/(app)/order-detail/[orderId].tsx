@@ -6,16 +6,18 @@ import {
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderAPI } from '../../../services/api';
+import { useTranslation } from 'react-i18next';
 
-const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-    PENDING: { bg: '#FEF3C7', text: '#92400E', label: '⏳ Pending' },
-    CONFIRMED: { bg: '#DBEAFE', text: '#1E40AF', label: '✓ Confirmed' },
-    PREPARING: { bg: '#EDE9FE', text: '#5B21B6', label: '🍳 Preparing' },
-    READY: { bg: '#D1FAE5', text: '#065F46', label: '✅ Ready!' },
-    SERVED: { bg: '#F3F4F6', text: '#374151', label: '👔 Served' },
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+    PENDING: { bg: '#FEF3C7', text: '#92400E' },
+    CONFIRMED: { bg: '#DBEAFE', text: '#1E40AF' },
+    PREPARING: { bg: '#EDE9FE', text: '#5B21B6' },
+    READY: { bg: '#D1FAE5', text: '#065F46' },
+    SERVED: { bg: '#F3F4F6', text: '#374151' },
 };
 
 export default function OrderDetailScreen() {
+    const { t } = useTranslation();
     const { orderId } = useLocalSearchParams<{ orderId: string }>();
     const queryClient = useQueryClient();
 
@@ -31,9 +33,9 @@ export default function OrderDetailScreen() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['orderDetail', orderId] });
             queryClient.invalidateQueries({ queryKey: ['waiterDashboard'] });
-            Alert.alert('✅ Done', 'Order marked as served!');
+            Alert.alert(t('orderDetail.done'), t('orderDetail.markedServed'));
         },
-        onError: (e: any) => Alert.alert('Error', e?.response?.data?.message || 'Failed to mark served'),
+        onError: (e: any) => Alert.alert(t('orderDetail.error'), e?.response?.data?.message || 'Failed to mark served'),
     });
 
     if (isLoading) {
@@ -43,13 +45,14 @@ export default function OrderDetailScreen() {
     if (!data) {
         return (
             <View style={styles.center}>
-                <Text style={{ fontSize: 16, color: '#6B7280' }}>Order not found.</Text>
+                <Text style={{ fontSize: 16, color: '#6B7280' }}>{t('orderDetail.orderNotFound')}</Text>
             </View>
         );
     }
 
     const order = data;
-    const status = STATUS_COLORS[order.status] || { bg: '#F3F4F6', text: '#374151', label: order.status };
+    const statusColors = STATUS_COLORS[order.status] || { bg: '#F3F4F6', text: '#374151' };
+    const statusLabel = t(`orderDetail.statuses.${order.status}`, { defaultValue: order.status });
     const items = order.items || order.orderItems || [];
 
     return (
@@ -58,19 +61,19 @@ export default function OrderDetailScreen() {
 
             <ScrollView contentContainerStyle={{ padding: 16 }}>
                 {/* Status Banner */}
-                <View style={[styles.statusBanner, { backgroundColor: status.bg }]}>
-                    <Text style={[styles.statusLabel, { color: status.text }]}>{status.label}</Text>
-                    <Text style={[styles.orderNum, { color: status.text }]}>#{order.orderNumber}</Text>
+                <View style={[styles.statusBanner, { backgroundColor: statusColors.bg }]}>
+                    <Text style={[styles.statusLabel, { color: statusColors.text }]}>{statusLabel}</Text>
+                    <Text style={[styles.orderNum, { color: statusColors.text }]}>#{order.orderNumber}</Text>
                 </View>
 
                 {/* Customer Info */}
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Customer</Text>
+                    <Text style={styles.cardTitle}>{t('orderDetail.customer')}</Text>
                     <Text style={styles.cardValue}>
                         {order.user?.firstName} {order.user?.lastName}
                     </Text>
                     {order.tableNumber && (
-                        <Text style={styles.cardSub}>Table {order.tableNumber}</Text>
+                        <Text style={styles.cardSub}>{t('orderDetail.table', { number: order.tableNumber })}</Text>
                     )}
                     <Text style={styles.cardSub}>
                         {new Date(order.createdAt).toLocaleString()}
@@ -79,7 +82,7 @@ export default function OrderDetailScreen() {
 
                 {/* Items */}
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Items ({items.length})</Text>
+                    <Text style={styles.cardTitle}>{t('orderDetail.items', { count: items.length })}</Text>
                     {items.map((item: any, i: number) => (
                         <View key={i} style={styles.itemRow}>
                             <View style={styles.itemLeft}>
@@ -96,7 +99,7 @@ export default function OrderDetailScreen() {
                         </View>
                     ))}
                     <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Total</Text>
+                        <Text style={styles.totalLabel}>{t('orderDetail.total')}</Text>
                         <Text style={styles.totalAmount}>€{parseFloat(order.totalAmount).toFixed(2)}</Text>
                     </View>
                 </View>
@@ -104,7 +107,7 @@ export default function OrderDetailScreen() {
                 {/* Notes */}
                 {order.notes && (
                     <View style={[styles.card, { backgroundColor: '#FFFBEB' }]}>
-                        <Text style={styles.cardTitle}>Order Notes</Text>
+                        <Text style={styles.cardTitle}>{t('orderDetail.orderNotes')}</Text>
                         <Text style={styles.cardValue}>{order.notes}</Text>
                     </View>
                 )}
@@ -116,18 +119,18 @@ export default function OrderDetailScreen() {
                     <TouchableOpacity
                         style={[styles.serveBtn, serveMutation.isPending && { opacity: 0.6 }]}
                         onPress={() => Alert.alert(
-                            'Mark as Served',
-                            'Confirm that this order has been delivered to the table?',
+                            t('orderDetail.markAsServed'),
+                            t('orderDetail.confirmServed'),
                             [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'Confirm ✅', onPress: () => serveMutation.mutate() },
+                                { text: t('orderDetail.cancel'), style: 'cancel' },
+                                { text: t('orderDetail.confirm'), onPress: () => serveMutation.mutate() },
                             ]
                         )}
                         disabled={serveMutation.isPending}
                     >
                         {serveMutation.isPending
                             ? <ActivityIndicator color="#fff" />
-                            : <Text style={styles.serveBtnText}>✅ Mark as Served</Text>
+                            : <Text style={styles.serveBtnText}>{t('orderDetail.markAsServed')}</Text>
                         }
                     </TouchableOpacity>
                 </View>

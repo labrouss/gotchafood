@@ -21,6 +21,7 @@ const statusLabels: any = {
   PREPARING: 'Preparing',
   OUT_FOR_DELIVERY: 'Out for Delivery',
   DELIVERED: 'Delivered',
+  SERVED: 'Served',
   CANCELLED: 'Cancelled',
 };
 
@@ -441,6 +442,7 @@ export default function AdminOrders() {
                         <option value="PREPARING">Preparing</option>
                         <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
                         <option value="DELIVERED">Delivered</option>
+                        <option value="SERVED">Served</option>
                         <option value="CANCELLED">Cancelled</option>
                       </select>
                     </div>

@@ -36,20 +36,25 @@ export default function LoyaltyCard() {
     }
   }, [user, navigate]);
 
+  // Generate QR from the encrypted loyalty token (refreshed every 4 min).
+  // Falls back to phone number if token hasn't loaded yet.
+  // The waiter app calls POST /user/identify-loyalty to decrypt the token,
+  // or falls back to GET /loyalty/lookup/:phone if the QR contains a phone.
   useEffect(() => {
-    if (user?.phone) {
-      QRCode.toDataURL(user.phone, {
-        width: 300,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#ffffff',
-        },
-      })
-        .then(url => setQrDataUrl(url))
-        .catch(err => console.error('QR generation error:', err));
-    }
-  }, [user?.phone]);
+    const qrContent = tokenData?.data?.token || user?.phone;
+    if (!qrContent) return;
+
+    QRCode.toDataURL(qrContent, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+      .then(url => setQrDataUrl(url))
+      .catch(err => console.error('QR generation error:', err));
+  }, [tokenData?.data?.token, user?.phone]);
 
   const reward = rewardData?.data?.loyalty;
   const transactions = rewardData?.data?.transactions || [];

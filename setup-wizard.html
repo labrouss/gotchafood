@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GotchaFood — First Run Setup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.07);
+    --border-active: rgba(99,102,241,0.6);
+    --accent: #6366f1;
+    --accent2: #a78bfa;
+    --accent3: #34d399;
+    --text: #f1f0f5;
+    --muted: #6b6880;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --success: #34d399;
+    --radius: 14px;
+    --glow: 0 0 40px rgba(99,102,241,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 56px;
+  }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 20px rgba(99,102,241,0.4);
+  }
+  .site-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  .site-name span { color: var(--accent2); }
+  .badge {
+    margin-left: auto;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  /* ── Step tracker ── */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 48px;
+  }
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    position: relative;
+  }
+  .step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: calc(50% + 18px);
+    right: calc(-50% + 18px);
+    height: 1px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+  .step-item.completed:not(:last-child)::after { background: var(--accent); }
+  .step-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    transition: all 0.3s;
+    position: relative;
+    z-index: 1;
+  }
+  .step-item.active   .step-dot { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); box-shadow: 0 0 16px rgba(99,102,241,0.3); }
+  .step-item.completed .step-dot { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+  .step-item.active .step-label { color: var(--accent2); }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    margin-bottom: 20px;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: rgba(99,102,241,0.2); }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-desc { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+  /* ── Form elements ── */
+  .field-grid { display: grid; gap: 18px; }
+  .field-grid.cols2 { grid-template-columns: 1fr 1fr; }
+  .field-grid.cols3 { grid-template-columns: 1fr 1fr 1fr; }
+  @media(max-width:600px) { .field-grid.cols2, .field-grid.cols3 { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .required { color: var(--danger); }
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+  }
+  .field input.error { border-color: var(--danger); }
+  .field input::placeholder { color: var(--muted); opacity: 0.6; }
+  .field select option { background: var(--surface2); }
+  .field-hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .field-error { font-size: 12px; color: var(--danger); margin-top: 3px; display: none; }
+  .field input.error + .field-error { display: block; }
+
+  /* ── Toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--surface2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .toggle-row:hover { border-color: rgba(99,102,241,0.3); }
+  .toggle-info { display: flex; flex-direction: column; gap: 2px; }
+  .toggle-label { font-size: 14px; font-weight: 500; }
+  .toggle-desc { font-size: 12px; color: var(--muted); }
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px; height: 18px;
+    background: var(--muted);
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: all 0.2s;
+  }
+  .toggle-row.on .toggle { background: var(--accent); border-color: var(--accent); }
+  .toggle-row.on .toggle::after { left: 22px; background: #fff; }
+
+  /* ── Section divider ── */
+  .section-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 28px 0 20px;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+  .section-divider span {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  /* ── Inline badge ── */
+  .tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+  .tag.optional { background: rgba(107,104,128,0.15); color: var(--muted); }
+  .tag.required { background: rgba(248,113,113,0.1); color: var(--danger); }
+
+  /* ── Step panels ── */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; animation: fadeSlide 0.3s ease; }
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Step headline ── */
+  .step-headline {
+    margin-bottom: 32px;
+  }
+  .step-headline h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  .step-headline h2 em { font-style: normal; color: var(--accent2); }
+  .step-headline p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* ── Feature grid ── */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width:500px) { .feature-grid { grid-template-columns: 1fr; } }
+
+  /* ── Buttons ── */
+  .btn-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(99,102,241,0.45); }
+  .btn-success {
+    background: linear-gradient(135deg, var(--accent3), #059669);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(52,211,153,0.3);
+  }
+  .btn-success:hover { transform: translateY(-1px); }
+
+  /* ── Output panel ── */
+  .output-panel {
+    background: #0d0d12;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow: hidden;
+  }
+  .output-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .output-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .copy-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+  .output-block { display: none; }
+  .output-block.active { display: block; }
+
+  .out-line { display: flex; gap: 12px; }
+  .out-key { color: var(--muted); min-width: 200px; flex-shrink: 0; }
+  .out-val { color: var(--accent2); word-break: break-all; }
+  .out-val.secret { color: var(--warning); }
+  .out-val.url { color: var(--accent3); }
+  .out-section {
+    color: var(--accent);
+    margin: 14px 0 6px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .download-btn {
+    display: block;
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+  }
+  .download-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(99,102,241,0.45); }
+
+  /* ── Review summary ── */
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media(max-width:500px) { .summary-grid { grid-template-columns: 1fr; } }
+  .summary-item {
+    background: var(--surface2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+  }
+  .summary-item .key { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-item .val { font-size: 15px; font-weight: 600; margin-top: 3px; word-break: break-all; }
+
+  /* ── Alert ── */
+  .alert {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .alert-warn { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.2); color: var(--warning); }
+  .alert-info { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); color: var(--accent2); }
+  .alert-success { background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: var(--success); }
+  .alert span { font-size: 18px; flex-shrink: 0; }
+  .alert div { line-height: 1.6; }
+
+  /* ── Tab switcher for output ── */
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn.active { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="logo-mark">🍕</div>
+    <div class="site-name">Gotcha<span>Food</span></div>
+    <div class="badge">setup wizard v1.0</div>
+  </header>
+
+  <!-- Stepper -->
+  <div class="stepper">
+    <div class="step-item active" id="step-indicator-1">
+      <div class="step-dot">01</div>
+      <div class="step-label">Restaurant</div>
+    </div>
+    <div class="step-item" id="step-indicator-2">
+      <div class="step-dot">02</div>
+      <div class="step-label">Server</div>
+    </div>
+    <div class="step-item" id="step-indicator-3">
+      <div class="step-dot">03</div>
+      <div class="step-label">Database</div>
+    </div>
+    <div class="step-item" id="step-indicator-4">
+      <div class="step-dot">04</div>
+      <div class="step-label">Features</div>
+    </div>
+    <div class="step-item" id="step-indicator-5">
+      <div class="step-dot">05</div>
+      <div class="step-label">Export</div>
+    </div>
+  </div>
+
+  <!-- ─── STEP 1: Restaurant Info ─── -->
+  <div class="step-panel active" id="panel-1">
+    <div class="step-headline">
+      <h2>Tell us about the <em>restaurant</em></h2>
+      <p>This becomes the brand name, admin account, and default language across all apps.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🍽️ Restaurant Identity</div>
+      <div class="card-desc">How customers and staff will see this business</div>
+      <div class="field-grid cols2">
+        <div class="field">
+          <label>Restaurant Name <span class="required">*</span></label>
+          <input type="text" id="customerName" placeholder="e.g. Souvlaki Street" />
+          <div class="field-hint">Appears in the navbar, app, and receipts</div>
+          <div class="field-error">Required</div>
+        </div>
+        <div class="field">
+          <label>Slug <span class="required">*</span></label>
+          <input type="text" id="customerSlug" placeholder="souvlaki-street" />
+          <div class="field-hint">Used for Docker container names. Lowercase, no spaces.</div>
+        </div>
+        <div class="field">
+          <label>Default Language</label>
+          <select id="defaultLang">
+            <option value="en">🇬🇧 English</option>
+            <option value="el">🇬🇷 Greek (Ελληνικά)</option>
+            <option value="de">🇩🇪 German (Deutsch)</option>
+            <option value="fr">🇫🇷 French (Français)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Timezone</label>
+          <select id="timezone">
+            <option value="Europe/Athens">Europe/Athens (UTC+2/3)</option>
+            <option value="Europe/London">Europe/London (UTC+0/1)</option>
+            <option value="Europe/Paris">Europe/Paris (UTC+1/2)</option>
+            <option value="Europe/Berlin">Europe/Berlin (UTC+1/2)</option>
+            <option value="America/New_York">America/New_York (UTC-5/4)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles (UTC-8/7)</option>
+            <option value="UTC">UTC</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Currency</label>
+          <select id="currency">
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="USD">USD ($)</option>
+            <option value="CHF">CHF (Fr.)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">👤 Admin Account</div>
+      <div class="card-desc">The first admin user that gets created in the database</div>
+      <div class="field-grid cols2">
+        <div class="field">
+          <label>Admin Email <span class="required">*</span></label>
+          <input type="email" id="adminEmail" placeholder="admin@souvlakistreet.com" />
+          <div class="field-error">Valid email required</div>
+        </div>
+        <div class="field">
+          <label>Admin Password <span class="required">*</span></label>
+          <input type="text" id="adminPass" placeholder="min 8 characters" />
+          <div class="field-hint">You'll change this after first login</div>
+          <div class="field-error">Min 8 characters</div>
+        </div>
+        <div class="field">
+          <label>First Name</label>
+          <input type="text" id="adminFirst" placeholder="Admin" value="Admin" />
+        </div>
+        <div class="field">
+          <label>Last Name</label>
+          <input type="text" id="adminLast" placeholder="User" value="User" />
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <div></div>
+      <button class="btn btn-primary" onclick="goStep(2)">Server Setup →</button>
+    </div>
+  </div>
+
+  <!-- ─── STEP 2: Server / Network ─── -->
+  <div class="step-panel" id="panel-2">
+    <div class="step-headline">
+      <h2>Where is this <em>running?</em></h2>
+      <p>The hostname determines URLs in every generated config. Use <code style="color:var(--accent2)">localhost</code> for development or a real IP/domain for production.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌐 Network</div>
+      <div class="card-desc">These values get written into .env files, docker-compose.yml, and mobile config</div>
+      <div class="field-grid cols2">
+        <div class="field" style="grid-column: span 2">
+          <label>Server Host <span class="required">*</span></label>
+          <input type="text" id="serverHost" placeholder="localhost  or  192.168.1.10  or  myrestaurant.com" value="localhost" />
+          <div class="field-hint">IP address or domain name — no http://, no port</div>
+        </div>
+        <div class="field">
+          <label>Backend Port</label>
+          <input type="number" id="backendPort" value="3000" />
+        </div>
+        <div class="field">
+          <label>Frontend Port</label>
+          <input type="number" id="frontendPort" value="5173" />
+        </div>
+        <div class="field">
+          <label>MySQL Port</label>
+          <input type="number" id="dbPort" value="3306" />
+        </div>
+        <div class="field">
+          <label>Expo Metro Port <span class="tag optional">optional</span></label>
+          <input type="number" id="mobilePort" value="8081" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📧 Email / SMTP <span class="tag optional" style="font-size:12px;margin-left:8px">optional</span></div>
+      <div class="card-desc">Only needed if you want order confirmation or registration emails</div>
+      <div class="toggle-row" id="emailToggle" onclick="toggleFeature('emailToggle','emailFields')">
+        <div class="toggle-info">
+          <div class="toggle-label">Enable email notifications</div>
+          <div class="toggle-desc">Requires SMTP server credentials</div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+      <div id="emailFields" style="display:none; margin-top:18px">
+        <div class="field-grid cols2">
+          <div class="field">
+            <label>SMTP Host</label>
+            <input type="text" id="smtpHost" placeholder="smtp.gmail.com" />
+          </div>
+          <div class="field">
+            <label>SMTP Port</label>
+            <input type="number" id="smtpPort" value="587" />
+          </div>
+          <div class="field">
+            <label>SMTP Username</label>
+            <input type="email" id="smtpUser" placeholder="you@gmail.com" />
+          </div>
+          <div class="field">
+            <label>SMTP Password</label>
+            <input type="password" id="smtpPass" placeholder="app password" />
+          </div>
+          <div class="field">
+            <label>From Name</label>
+            <input type="text" id="emailFromName" placeholder="My Restaurant" />
+          </div>
+          <div class="field">
+            <label>From Email</label>
+            <input type="email" id="emailFrom" placeholder="noreply@myrestaurant.com" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Database →</button>
+    </div>
+  </div>
+
+  <!-- ─── STEP 3: Database & Security ─── -->
+  <div class="step-panel" id="panel-3">
+    <div class="step-headline">
+      <h2>Database &amp; <em>Security</em></h2>
+      <p>These credentials get written to docker-compose.yml and backend/.env. Never commit them to git.</p>
+    </div>
+
+    <div class="alert alert-warn">
+      <span>⚠️</span>
+      <div>All three password fields below are pre-filled with <strong>placeholder values</strong>. You must change them before deploying to any non-local environment.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🗄️ MySQL</div>
+      <div class="field-grid cols2">
+        <div class="field">
+          <label>Database Name</label>
+          <input type="text" id="dbName" value="food_ordering" />
+        </div>
+        <div class="field">
+          <label>DB User</label>
+          <input type="text" id="dbUser" value="foodapp" />
+        </div>
+        <div class="field">
+          <label>DB Password <span class="required">*</span></label>
+          <input type="text" id="dbPass" value="" placeholder="strong password" />
+          <div class="field-error">Required</div>
+        </div>
+        <div class="field">
+          <label>DB Root Password <span class="required">*</span></label>
+          <input type="text" id="dbRootPass" value="" placeholder="strong root password" />
+          <div class="field-error">Required</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔐 JWT Secret</div>
+      <div class="card-desc">Signs all authentication tokens — must be long and random</div>
+      <div class="field-grid" style="grid-template-columns: 1fr auto; gap:12px; align-items:end">
+        <div class="field">
+          <label>JWT Secret <span class="required">*</span></label>
+          <input type="text" id="jwtSecret" placeholder="Generate a random 48+ char string" style="font-family:'DM Mono',monospace; font-size:13px" />
+          <div class="field-error">Required — min 32 chars</div>
+        </div>
+        <button class="btn btn-ghost" style="margin-bottom:0;white-space:nowrap" onclick="generateSecret()">🎲 Generate</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📱 Mobile (Expo) <span class="tag optional" style="font-size:12px;margin-left:8px">optional</span></div>
+      <div class="card-desc">Only needed if you're deploying the waiter app for remote device access</div>
+      <div class="toggle-row on" id="mobileToggle" onclick="toggleFeature('mobileToggle','mobileFields')">
+        <div class="toggle-info">
+          <div class="toggle-label">Enable mobile waiter app</div>
+          <div class="toggle-desc">Expo dev server + optional ngrok tunnel</div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+      <div id="mobileFields" style="margin-top:18px">
+        <div class="field-grid cols2">
+          <div class="field">
+            <label>Expo Token <span class="tag optional">optional</span></label>
+            <input type="text" id="expoToken" placeholder="from expo.dev account" style="font-family:'DM Mono',monospace;font-size:13px" />
+            <div class="field-hint">For <code>npx expo login</code> in CI</div>
+          </div>
+          <div class="field">
+            <label>ngrok Auth Token <span class="tag optional">optional</span></label>
+            <input type="text" id="ngrokToken" placeholder="from ngrok.com account" style="font-family:'DM Mono',monospace;font-size:13px" />
+            <div class="field-hint">Enables tunnel for real devices off-network</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-primary" onclick="goStep(4)">Features →</button>
+    </div>
+  </div>
+
+  <!-- ─── STEP 4: Features ─── -->
+  <div class="step-panel" id="panel-4">
+    <div class="step-headline">
+      <h2>Which <em>features</em> to enable?</h2>
+      <p>Disabled features hide their nav links, admin pages, and routes. You can change this later in the admin panel.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎛️ Feature Flags</div>
+      <div class="card-desc">All enabled by default — toggle off anything this customer doesn't need</div>
+      <div class="feature-grid">
+        <div class="toggle-row on" id="feat-delivery" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">🛵 Delivery</div><div class="toggle-desc">Online orders, delivery dashboard</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-tableOrdering" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">🍽️ Table Ordering</div><div class="toggle-desc">Waiter app, sessions, QR codes</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-reservations" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">📅 Reservations</div><div class="toggle-desc">Booking calendar, customer reservations</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-loyalty" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">⭐ Loyalty Program</div><div class="toggle-desc">Points, tiers, member cards</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-reviews" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">💬 Reviews</div><div class="toggle-desc">Customer reviews, admin responses</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-kitchenDisplay" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">📺 Kitchen Display</div><div class="toggle-desc">Live order board for kitchen staff</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-counterPOS" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">🖥️ Counter POS</div><div class="toggle-desc">Walk-up ordering terminal</div></div>
+          <div class="toggle"></div>
+        </div>
+        <div class="toggle-row on" id="feat-loadDemo" onclick="this.classList.toggle('on')">
+          <div class="toggle-info"><div class="toggle-label">🌱 Load Demo Data</div><div class="toggle-desc">Categories, menu items, sample orders</div></div>
+          <div class="toggle"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
+      <button class="btn btn-primary" onclick="goStep(5)">Review &amp; Export →</button>
+    </div>
+  </div>
+
+  <!-- ─── STEP 5: Export ─── -->
+  <div class="step-panel" id="panel-5">
+    <div class="step-headline">
+      <h2>Review &amp; <em>Export</em></h2>
+      <p>Everything looks good? Download the config file, then run <code style="color:var(--accent2)">./setup.sh</code>.</p>
+    </div>
+
+    <div id="summaryGrid" class="summary-grid" style="margin-bottom:24px"></div>
+
+    <div class="alert alert-info">
+      <span>ℹ️</span>
+      <div>
+        <strong>How to deploy:</strong><br>
+        1. Download <code>customer.config.json</code> → place it in the repo root<br>
+        2. Run <code>chmod +x setup.sh && ./setup.sh</code><br>
+        3. First run takes ~3 min (npm install inside Docker)<br>
+        4. Done — visit the URL shown at the end of the script
+      </div>
+    </div>
+
+    <div class="output-panel">
+      <div class="output-header">
+        <div class="output-title">Generated Output</div>
+        <div style="display:flex;gap:8px">
+          <button class="copy-btn" onclick="copyOutput()">Copy</button>
+        </div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="showTab('tab-config')">customer.config.json</button>
+        <button class="tab-btn" onclick="showTab('tab-env-backend')">backend/.env</button>
+        <button class="tab-btn" onclick="showTab('tab-env-frontend')">frontend/.env</button>
+        <button class="tab-btn" onclick="showTab('tab-docker')">docker-compose.yml (excerpt)</button>
+      </div>
+
+      <div id="tab-config" class="output-block active"></div>
+      <div id="tab-env-backend" class="output-block"></div>
+      <div id="tab-env-frontend" class="output-block"></div>
+      <div id="tab-docker" class="output-block"></div>
+    </div>
+
+    <button class="download-btn" onclick="downloadConfig()">
+      ⬇️ Download customer.config.json
+    </button>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goStep(4)">← Back</button>
+      <div></div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentStep = 1;
+const TOTAL_STEPS = 5;
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function goStep(n) {
+  if (n > currentStep && !validateStep(currentStep)) return;
+  if (n === TOTAL_STEPS) buildOutput();
+
+  document.getElementById(`panel-${currentStep}`).classList.remove('active');
+  document.getElementById(`step-indicator-${currentStep}`).classList.remove('active');
+  if (n > currentStep) document.getElementById(`step-indicator-${currentStep}`).classList.add('completed');
+
+  currentStep = n;
+  document.getElementById(`panel-${currentStep}`).classList.add('active');
+  const ind = document.getElementById(`step-indicator-${currentStep}`);
+  ind.classList.add('active');
+  ind.classList.remove('completed');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Validation ─────────────────────────────────────────────────────────────
+function validateStep(step) {
+  let ok = true;
+  const required = {
+    1: ['customerName', 'customerSlug', 'adminEmail', 'adminPass'],
+    2: ['serverHost'],
+    3: ['dbPass', 'dbRootPass', 'jwtSecret'],
+    4: [],
+  };
+  (required[step] || []).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value.trim();
+    let valid = val.length > 0;
+    if (id === 'adminEmail') valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    if (id === 'adminPass') valid = val.length >= 8;
+    if (id === 'jwtSecret') valid = val.length >= 32;
+    el.classList.toggle('error', !valid);
+    if (!valid) ok = false;
+  });
+  return ok;
+}
+
+// ── Toggles ────────────────────────────────────────────────────────────────
+function toggleFeature(toggleId, fieldsId) {
+  const row = document.getElementById(toggleId);
+  row.classList.toggle('on');
+  if (fieldsId) {
+    const fields = document.getElementById(fieldsId);
+    if (fields) fields.style.display = row.classList.contains('on') ? 'block' : 'none';
+  }
+}
+
+// ── Auto-slug ──────────────────────────────────────────────────────────────
+document.getElementById('customerName').addEventListener('input', function() {
+  const slug = this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  document.getElementById('customerSlug').value = slug;
+  document.getElementById('emailFromName').value = this.value;
+});
+
+// ── Secret generator ───────────────────────────────────────────────────────
+function generateSecret() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let secret = '';
+  for (let i = 0; i < 48; i++) secret += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('jwtSecret').value = secret;
+}
+
+// ── Collect all values ─────────────────────────────────────────────────────
+function collect() {
+  const g = id => (document.getElementById(id) || {value:''}).value.trim();
+  const on = id => document.getElementById(id)?.classList.contains('on') ?? true;
+
+  const host = g('serverHost') || 'localhost';
+  const bPort = g('backendPort') || '3000';
+  const fPort = g('frontendPort') || '5173';
+  const apiUrl = (host === 'localhost' || host === '127.0.0.1')
+    ? `http://localhost:${bPort}`
+    : `http://${host}:${bPort}`;
+  const frontendUrl = (host === 'localhost' || host === '127.0.0.1')
+    ? `http://localhost:${fPort}`
+    : `http://${host}:${fPort}`;
+
+  const currencies = { EUR: '€', GBP: '£', USD: '$', CHF: 'Fr.' };
+  const curr = g('currency') || 'EUR';
+
+  return {
+    customer: {
+      name: g('customerName') || 'My Restaurant',
+      slug: g('customerSlug') || 'my-restaurant',
+      defaultLanguage: g('defaultLang') || 'en',
+      timezone: g('timezone') || 'UTC',
+      currency: curr,
+      currencySymbol: currencies[curr] || '€',
+    },
+    server: {
+      host,
+      backendPort: parseInt(bPort),
+      frontendPort: parseInt(fPort),
+      mobileMetroPort: parseInt(g('mobilePort') || '8081'),
+    },
+    database: {
+      name: g('dbName') || 'food_ordering',
+      user: g('dbUser') || 'foodapp',
+      password: g('dbPass'),
+      rootPassword: g('dbRootPass'),
+      port: parseInt(g('dbPort') || '3306'),
+    },
+    auth: {
+      jwtSecret: g('jwtSecret'),
+      jwtExpiresIn: '7d',
+    },
+    adminUser: {
+      email: g('adminEmail'),
+      password: g('adminPass'),
+      firstName: g('adminFirst') || 'Admin',
+      lastName: g('adminLast') || 'User',
+      phone: '',
+    },
+    mobile: {
+      enabled: on('mobileToggle'),
+      expoToken: g('expoToken'),
+      ngrokAuthToken: g('ngrokToken'),
+    },
+    email: {
+      enabled: on('emailToggle'),
+      smtpHost: g('smtpHost'),
+      smtpPort: parseInt(g('smtpPort') || '587'),
+      smtpUser: g('smtpUser'),
+      smtpPass: g('smtpPass'),
+      fromName: g('emailFromName') || g('customerName'),
+      fromEmail: g('emailFrom'),
+    },
+    features: {
+      delivery: on('feat-delivery'),
+      tableOrdering: on('feat-tableOrdering'),
+      reservations: on('feat-reservations'),
+      loyalty: on('feat-loyalty'),
+      reviews: on('feat-reviews'),
+      kitchenDisplay: on('feat-kitchenDisplay'),
+      counterPOS: on('feat-counterPOS'),
+    },
+    seed: {
+      loadDemoData: on('feat-loadDemo'),
+      demoDataLanguage: g('defaultLang') || 'en',
+    },
+    _meta: { apiUrl, frontendUrl },
+  };
+}
+
+// ── Build Output ───────────────────────────────────────────────────────────
+function buildOutput() {
+  const d = collect();
+
+  // Summary grid
+  const summaryEl = document.getElementById('summaryGrid');
+  const items = [
+    ['Restaurant', d.customer.name],
+    ['Host', d.server.host],
+    ['Language', d.customer.defaultLanguage],
+    ['Currency', `${d.customer.currency} (${d.customer.currencySymbol})`],
+    ['Admin', d.adminUser.email],
+    ['Frontend URL', d.metadata?.frontendUrl || `http://${d.server.host}:${d.server.frontendPort}`],
+    ['Backend URL', d._meta.apiUrl],
+    ['Mobile', d.mobile.enabled ? '✅ Enabled' : '— Disabled'],
+  ];
+  summaryEl.innerHTML = items.map(([k,v]) => `
+    <div class="summary-item">
+      <div class="key">${k}</div>
+      <div class="val">${v}</div>
+    </div>`).join('');
+
+  // Tab: customer.config.json
+  const config = {...d};
+  delete config._meta;
+  config._comment = 'GotchaFood — Customer Deployment Config';
+  config._version = '1.0';
+  document.getElementById('tab-config').innerHTML =
+    `<pre style="color:#a78bfa;font-size:12px;white-space:pre-wrap;word-break:break-all">${escHtml(JSON.stringify(config, null, 2))}</pre>`;
+
+  // Tab: backend/.env
+  let envBackend = `# Auto-generated — do not commit to git\n\nDATABASE_URL="mysql://${d.database.user}:${d.database.password}@database:${d.database.port}/${d.database.name}"\nJWT_SECRET="${d.auth.jwtSecret}"\nJWT_EXPIRES_IN="7d"\nNODE_ENV="production"\nPORT=${d.server.backendPort}\nFRONTEND_URL="${d._meta.frontendUrl}"\nCUSTOMER_NAME="${d.customer.name}"\nDEFAULT_LANGUAGE="${d.customer.defaultLanguage}"\nTIMEZONE="${d.customer.timezone}"\nCURRENCY="${d.customer.currency}"\nCURRENCY_SYMBOL="${d.customer.currencySymbol}"`;
+  if (d.email.enabled) envBackend += `\n\nSMTP_HOST="${d.email.smtpHost}"\nSMTP_PORT=${d.email.smtpPort}\nSMTP_USER="${d.email.smtpUser}"\nSMTP_PASS="${d.email.smtpPass}"\nEMAIL_FROM_NAME="${d.email.fromName}"\nEMAIL_FROM="${d.email.fromEmail}"`;
+  document.getElementById('tab-env-backend').innerHTML =
+    `<pre style="color:#6ee7b7;font-size:12px;white-space:pre-wrap">${escHtml(envBackend)}</pre>`;
+
+  // Tab: frontend/.env
+  const envFrontend = `# Auto-generated\nVITE_API_URL=${d._meta.apiUrl}/api\nVITE_APP_NAME="${d.customer.name}"\nVITE_DEFAULT_LANGUAGE="${d.customer.defaultLanguage}"\nVITE_CURRENCY_SYMBOL="${d.customer.currencySymbol}"`;
+  document.getElementById('tab-env-frontend').innerHTML =
+    `<pre style="color:#6ee7b7;font-size:12px;white-space:pre-wrap">${escHtml(envFrontend)}</pre>`;
+
+  // Tab: docker-compose (partial)
+  const dockerExcerpt = `# Run: ./setup.sh --config customer.config.json
+# This file is auto-generated by setup.sh
+
+version: '3.8'
+services:
+  database:
+    container_name: ${d.customer.slug}-db
+    environment:
+      MYSQL_DATABASE: ${d.database.name}
+      MYSQL_USER: ${d.database.user}
+      MYSQL_PASSWORD: ••••••••
+
+  backend:
+    container_name: ${d.customer.slug}-backend
+    ports: ["${d.server.backendPort}:3000"]
+    env_file: ./backend/.env   ← secrets loaded from here
+
+  frontend:
+    container_name: ${d.customer.slug}-frontend
+    ports: ["${d.server.frontendPort}:5173"]
+
+  ${d.mobile.enabled ? `expo-mobile:
+    container_name: ${d.customer.slug}-mobile
+    ports: ["${d.server.mobileMetroPort}:8081"]` : '# expo-mobile: disabled'}`;
+  document.getElementById('tab-docker').innerHTML =
+    `<pre style="color:#93c5fd;font-size:12px;white-space:pre-wrap">${escHtml(dockerExcerpt)}</pre>`;
+}
+
+function showTab(id) {
+  document.querySelectorAll('.output-block').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyOutput() {
+  const active = document.querySelector('.output-block.active pre');
+  if (active) navigator.clipboard.writeText(active.textContent).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✓ Copied';
+    setTimeout(() => btn.textContent = 'Copy', 1500);
+  });
+}
+
+function downloadConfig() {
+  const d = collect();
+  const config = {...d};
+  delete config._meta;
+  config._comment = 'GotchaFood — Customer Deployment Config';
+  config._version = '1.0';
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `customer.config.json`;
+  a.click();
+}
+</script>
+</body>
+</html>
