@@ -101,25 +101,49 @@ export default function DashboardScreen() {
             Alert.alert('Invalid Phone', 'Please enter a valid phone number');
             return;
         }
-        
+
         setCustomerSearching(true);
         try {
-            // Call your loyalty API endpoint
+            // Try Customer table first (walk-in customers tracked by phone)
             const response = await waiterAPI.lookupLoyaltyCustomer(customerPhone);
-            
+
             if (response.data?.customer) {
-                setCustomerFound(response.data.customer);
+                // Found in Customer (walk-in) table
+                const c = response.data.customer;
+                setCustomerFound(c);
                 Alert.alert(
                     'Customer Found! ✅',
-                    `${response.data.customer.name}\nPoints: ${response.data.customer.points}\nDiscount: ${response.data.customer.discount || 0}%`
+                    `${c.name}\nPoints: ${c.points}\nDiscount: ${c.discount || 0}%`
                 );
-            } else {
-                Alert.alert('Not Found', 'No loyalty account found for this number');
-                setCustomerFound(null);
+                return;
             }
+
+            // Not in Customer table — try User/LoyaltyReward table (app users)
+            console.log('📞 Customer not in walk-in table, trying app users...');
+            const userResponse = await waiterAPI.lookupUserLoyalty(customerPhone);
+            if (userResponse.data?.user) {
+                const u = userResponse.data.user;
+                // id is empty: app Users can't be used as TableSession.customerId
+                setCustomerFound({
+                    id: '',
+                    name: u.name,
+                    phone: u.phone,
+                    points: u.points ?? 0,
+                    discount: u.discount ?? 0,
+                    visits: 0,
+                });
+                Alert.alert(
+                    'Customer Found! ✅',
+                    `${u.name}\nPoints: ${u.points ?? 0}\nDiscount: ${u.discount ?? 0}%`
+                );
+                return;
+            }
+
+            Alert.alert('Not Found', 'No loyalty account found for this number');
+            setCustomerFound(null);
         } catch (e: any) {
             console.error('Lookup error:', e);
-            Alert.alert('Not Found', 'No loyalty account found');
+            Alert.alert('Error', 'Could not search for customer');
             setCustomerFound(null);
         } finally {
             setCustomerSearching(false);
