@@ -108,6 +108,20 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold mb-2">
+                    Τηλέφωνο
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    placeholder="π.χ. 6912345678"
+                    className="w-full border rounded-lg px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
                     Προτίμηση Ενημερώσεων
                   </label>
                   <select
