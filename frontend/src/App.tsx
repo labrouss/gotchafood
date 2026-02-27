@@ -33,16 +33,13 @@ import VerifyEmailPage from './pages/VerifyEmailPage';
 import ToastContainer from './components/ToastContainer';
 
 
-// Pack 6 - Admin Pages
 import TablesManagement from './pages/admin/TablesManagement';
 import ReservationsCalendar from './pages/admin/ReservationsCalendar';
 
-// Pack 6 - Waiter Pages
 import WaiterDashboard from './pages/waiter/WaiterDashboard';
 import WaiterOrderDetail from './pages/waiter/WaiterOrderDetail';
 import TakeOrder from './pages/waiter/TakeOrder';
 
-// Pack 6 - Customer Pages
 import ReservationForm from './pages/customer/ReservationForm';
 import MyReservations from './pages/customer/MyReservations';
 
@@ -103,10 +100,10 @@ function AppContent() {
 		    {t('nav.myOrders')}
                     </Link>
                     <Link to="/my-reservations" className="hover:text-yellow-300 transition">
-                      📅 Κρατήσεις μου
+		    {t('nav.reservations')}
                     </Link>
                     <Link to="/cart" className="hover:text-yellow-300 transition relative">
-                      🛒 Καλάθι
+		    {t('nav.cart')}
                       {itemCount > 0 && (
                         <span className="absolute -top-2 -right-2 bg-yellow-400 text-gray-900 text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                           {itemCount}
@@ -118,7 +115,7 @@ function AppContent() {
 
                 {user && user.role === 'STAFF' && (
                   <Link to="/waiter" className="hover:text-yellow-300 transition font-semibold">
-                    👔 Τα Τραπέζια μου
+		    {t('nav.myTables')}
                   </Link>
                 )}
 
@@ -126,57 +123,57 @@ function AppContent() {
                 {isAdmin && (
                   <div className="relative group">
                     <button className="hover:text-yellow-300 transition">
-                      ⚙️ Admin
+		    {t('nav.admin')}
                     </button>
                     <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                       <Link to="/admin/tables-management" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
-                        🍽️ Τραπέζια
+		    {t('nav.tables')}
                       </Link>
                       <Link to="/admin/reservations" className="block px-4 py-2 hover:bg-gray-100">
-                        📅 Κρατήσεις
+		    {t('nav.reservations')}
                       </Link>
                       <div className="border-t border-gray-200"></div>
 
                       <Link to="/admin/insights" className="block px-4 py-2 hover:bg-gray-100 rounded-t-lg">
-                        📈 Insights
+		    {t('nav.insights')}
                       </Link>
                       <Link to="/admin/kitchen" className="block px-4 py-2 hover:bg-gray-100">
-                        🍳 Kitchen Display
+		    {t('nav.kitchenDisplay')}
                       </Link>
                       <Link to="/counter" className="block px-4 py-2 hover:bg-gray-100">
-                        🛒 Counter POS
+		    {t('nav.counterPOS')}
                       </Link>
                       <Link to="/delivery" className="block px-4 py-2 hover:bg-gray-100">
-                        🚗 Delivery
+		    {t('nav.delivery')}
                       </Link>
                       <Link to="/admin/reviews" className="block px-4 py-2 hover:bg-gray-100">
-                        ⭐ Reviews
+		    {t('nav.reviews')}
                       </Link>
                       <div className="border-t border-gray-200"></div>
                       <Link to="/admin/categories" className="block px-4 py-2 hover:bg-gray-100">
-                        Κατηγορίες
+		    {t('nav.categories')}
                       </Link>
                       <Link to="/admin/products" className="block px-4 py-2 hover:bg-gray-100">
-                        Προϊόντα
+		    {t('nav.products')}
                       </Link>
                       <Link to="/admin/orders" className="block px-4 py-2 hover:bg-gray-100">
-                        Παραγγελίες
+		    {t('nav.orders')}
                       </Link>
                       <Link to="/admin/customers" className="block px-4 py-2 hover:bg-gray-100">
-                        Πελάτες
+		    {t('nav.customers')}
                       </Link>
                       <Link to="/admin/staff-hr" className="block px-4 py-2 hover:bg-gray-100">
-                        👥 Staff HR
+		    {t('nav.staffHR')}
                       </Link>
                       <Link to="/admin/staff" className="block px-4 py-2 hover:bg-gray-100">
-                        👥 Staff
+		    {t('nav.staff')}
                       </Link>
                       <div className="border-t border-gray-200"></div>
                       <Link to="/admin/settings" className="block px-4 py-2 hover:bg-gray-100">
-                        ⚙️ Store Settings
+		    {t('nav.storeSettings')}
                       </Link>
                       <Link to="/admin/loyalty-tiers" className="block px-4 py-2 hover:bg-gray-100 rounded-b-lg">
-                        🏆 Loyalty Tiers
+		    {t('nav.loyaltyTiers')}
                       </Link>
                     </div>
                   </div>
@@ -187,33 +184,33 @@ function AppContent() {
                   <>
                     <div className="relative group">
                       <button className="text-sm hover:text-yellow-300 transition">
-                        Γεια σου, {user.firstName}! ▼
+		          {t('nav.greeting')} , {user.firstName}! ▼
                       </button>
                       <div className="absolute right-0 mt-2 w-56 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                         <Link to="/profile" className="block px-4 py-3 hover:bg-gray-100 rounded-t-lg">
-                          👤 Το Προφίλ μου
+		          {t('nav.myProfile')}
                         </Link>
                         <Link to="/my-orders" className="block px-4 py-3 hover:bg-gray-100">
-                          📦 Οι Παραγγελίες μου
+		          {t('nav.myOrders')}
                         </Link>
                         <Link to="/my-reservations" className="block px-4 py-3 hover:bg-gray-100">
-                          📅 Οι Κρατήσεις μου
+		          {t('nav.myReservations')}
                         </Link>
                         <Link to="/my-addresses" className="block px-4 py-3 hover:bg-gray-100">
-                          📍 Οι Διευθύνσεις μου
+		          {t('nav.myAddresses')}
                         </Link>
                         <div className="border-t border-gray-200"></div>
                         <Link to="/loyalty-card" className="block px-4 py-3 hover:bg-gray-100">
-                          💳 Loyalty Card
+		          {t('nav.loyaltyCard')}
                         </Link>
                         <Link to="/loyalty" className="block px-4 py-3 hover:bg-gray-100">
-                          🎁 Loyalty Rewards
+		          {t('nav.loyaltyRewards')}
                         </Link>
                         <Link to="/my-reviews" className="block px-4 py-3 hover:bg-gray-100">
-                          ⭐ Οι Αξιολογήσεις μου
+		          {t('nav.myReviews')}
                         </Link>
                         <Link to="/review" className="block px-4 py-3 hover:bg-gray-100 rounded-b-lg">
-                          ✍️ Γράψτε Αξιολόγηση
+		          {t('nav.writeReview')}
                         </Link>
                       </div>
                     </div>
@@ -227,7 +224,7 @@ function AppContent() {
                 ) : (
                   <>
                     <Link to="/reserve" className="hover:text-yellow-300 transition">
-                      📅 Κράτηση
+		          {t('nav.reserve')}
                     </Link>
                     <Link
                       to="/login"
