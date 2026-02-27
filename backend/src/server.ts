@@ -38,11 +38,18 @@ import { notFound } from './middleware/notFound.middleware';
 // Load environment variables
 dotenv.config();
 
+// Build allowed origins once from env — used by both Express CORS and Socket.IO
+const getAllowedOrigins = (): string[] => {
+  const origins = new Set<string>(['http://localhost:5173']);
+  if (process.env.FRONTEND_URL) origins.add(process.env.FRONTEND_URL);
+  return Array.from(origins);
+};
+
 const app: Application = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Allow all for now, or match corsOptions
+    origin: getAllowedOrigins(),
     methods: ['GET', 'POST'],
   },
 });
@@ -89,13 +96,12 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 })); // Security headers with CORS resource policy
 
-// CORS configuration - define once, use everywhere
+// CORS configuration — origins are derived from environment variables so no
+// hardcoded IPs or hostnames are needed here. FRONTEND_URL is set by
+// initial-setup.sh (or manually in backend/.env) and always added alongside
+// localhost:5173 as a safe fallback for local development.
 const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'http://yourip:5173',
-    'http://yourhostname.com:5173',
-  ],
+  origin: getAllowedOrigins(),
   credentials: true,
 };
 
