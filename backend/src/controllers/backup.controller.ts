@@ -36,7 +36,8 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
             tables,
             tableReservations,
             tableSessions,
-            waiterShifts
+            waiterShifts,
+            customers
         ] = await Promise.all([
             prisma.user.findMany(),
             prisma.address.findMany(),
@@ -57,13 +58,14 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
             prisma.tableReservation.findMany(),
             prisma.tableSession.findMany(),
             prisma.waiterShift.findMany(),
+            prisma.customer.findMany(),
         ]);
 
         const backupData = {
             meta: {
                 timestamp: new Date().toISOString(),
                 version: '1.0',
-                tables: 19
+                tables: 20
             },
             data: {
                 users,
@@ -84,7 +86,8 @@ export const createBackup = async (req: Request, res: Response, next: NextFuncti
                 tables,
                 tableReservations,
                 tableSessions,
-                waiterShifts
+                waiterShifts,
+                customers
             }
         };
 
@@ -164,6 +167,7 @@ export const restoreBackup = async (req: Request, res: Response, next: NextFunct
             await tx.category.deleteMany();
             await tx.storeSettings.deleteMany();
             await tx.loyaltyTier.deleteMany();
+            await tx.customer.deleteMany();
             await tx.user.deleteMany();
 
             // 2. Restore data (Order matters!)
@@ -175,6 +179,7 @@ export const restoreBackup = async (req: Request, res: Response, next: NextFunct
             if (data.loyaltyTiers?.length) await tx.loyaltyTier.createMany({ data: data.loyaltyTiers });
             if (data.categories?.length) await tx.category.createMany({ data: data.categories });
             if (data.tables?.length) await tx.table.createMany({ data: data.tables });
+            if (data.customers?.length) await tx.customer.createMany({ data: data.customers });
 
             // Dependent tables
             if (data.menuItems?.length) await tx.menuItem.createMany({ data: data.menuItems });
