@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../components/ToastContainer';
 
-const API_URL = 'http://10.1.11.35:3000';
+const API_URL = 'http://youripaddress:3000';
 
 const getAuthHeader = () => ({
   'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,

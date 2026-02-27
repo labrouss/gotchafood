@@ -93,8 +93,8 @@ app.use(helmet({
 const corsOptions = {
   origin: [
     'http://localhost:5173',
-    'http://10.1.11.35:5173',
-    'http://dockerhost.hpehellas-demo.com:5173',
+    'http://yourip:5173',
+    'http://yourhostname.com:5173',
   ],
   credentials: true,
 };
