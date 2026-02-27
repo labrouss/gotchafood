@@ -3,36 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../components/ToastContainer';
-
-const API_URL = 'http://youripaddress:3000';
-
-const getAuthHeader = () => ({
-  'Authorization': `Bearer ${JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token}`,
-  'Content-Type': 'application/json'
-});
+import api from '../../services/api';
 
 const waiterAPI = {
-  getSession: (id: string) => fetch(`${API_URL}/api/waiter/sessions/${id}`, {
-    headers: getAuthHeader()
-  }).then(r => r.json()),
-  
-  getMenu: () => fetch(`${API_URL}/api/menu`, {
-    headers: getAuthHeader()
-  }).then(r => r.json()),
-  
-  createOrder: (sessionId: string, data: any) => fetch(`${API_URL}/api/waiter/sessions/${sessionId}/orders`, {
-    method: 'POST',
-    headers: getAuthHeader(),
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
-  
-  // NEW: Add items to existing order
-  addItemsToOrder: (sessionId: string, orderId: string, data: any) => fetch(
-    `${API_URL}/api/waiter/sessions/${sessionId}/orders/${orderId}/items`, {
-    method: 'POST',
-    headers: getAuthHeader(),
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
+  getSession: (id: string) => api.get(`/waiter/sessions/${id}`).then(r => r.data),
+  getMenu:    ()           => api.get('/menu').then(r => r.data),
+  createOrder: (sessionId: string, data: any) =>
+    api.post(`/waiter/sessions/${sessionId}/orders`, data).then(r => r.data),
+  addItemsToOrder: (sessionId: string, orderId: string, data: any) =>
+    api.post(`/waiter/sessions/${sessionId}/orders/${orderId}/items`, data).then(r => r.data),
 };
 
 export default function TakeOrder() {
